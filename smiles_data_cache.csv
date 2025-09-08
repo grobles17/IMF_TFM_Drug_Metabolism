@@ -1,0 +1,16 @@
+DrugBank ID,CYPs,Name,InChI,SMILES
+DBX0901,"['CYP3A4', 'CYP1A2']","Sodium (8ξ,9ξ,14ξ)-17-oxoestra-1,3,5(10)-trien-3-yl sulfate",,C[C@]12CCC3c4ccc(OS(=O)(=O)[O-])cc4CCC3C1CCC2=O.[Na+]
+DBX04672,['CYP3A4'],Ergoloid mesylate,,CC(C)[C@@]1(NC(=O)[C@@H]2C[C@@H]3c4cccc5[nH]cc(c45)C[C@H]3N(C)C2)O[C@@]2(O)[C@@H]3CCCN3C(=O)[C@H](C)N2C1=O.CS(=O)(=O)O
+DBX010623,"['CYP3A4', 'CYP3A43', 'CYP3A5', 'CYP3A7', 'CYP4F2']",Eicosapentanoic acid,,CC/C=C\C/C=C\C/C=C\C/C=C\C/C=C\CCCC(=O)O
+DBX010624,"['CYP3A4', 'CYP3A43', 'CYP3A5', 'CYP3A7', 'CYP4F2']",CLUPANODONIC ACID,,CC/C=C\C/C=C\C/C=C\C/C=C\C/C=C\CCCCCC(=O)O
+DBX010625,"['CYP3A4', 'CYP3A43', 'CYP3A5', 'CYP3A7', 'CYP4F2']",Osbond acid,,CCCCC/C=C\C/C=C\C/C=C\C/C=C\C/C=C\CCC(=O)O
+DBX010626,"['CYP3A4', 'CYP3A43', 'CYP3A5', 'CYP3A7', 'CYP4F2']",W-3-ARACHIDONIC ACID,,CC/C=C\C/C=C\C/C=C\C/C=C\CCCCCCC(=O)O
+DBX010627,"['CYP3A4', 'CYP3A43', 'CYP3A5', 'CYP3A7', 'CYP4F2']",heneicosapentaenoic acid,,CC/C=C\C/C=C\C/C=C\C/C=C\C/C=C\CCCCC(=O)O
+DBX010658,['CYP4A11'],"3,6,9,12,15,18,21,24,27,30,33,36,39,42,45-Pentadecaoxaheptatetracontane-1,47-diol",,OCCOCCOCCOCCOCCOCCOCCOCCOCCOCCOCCOCCOCCOCCOCCOCCO
+DBX010659,['CYP4A11'],Triethylene glycol,,OCCOCCOCCO
+DBX0106610,['CYP3A4'],Cholecalciferol,,C=C1CC[C@H](O)C/C1=C/C=C1\CCC[C@]2(C)[C@@H]([C@H](C)CCCC(C)C)CC[C@@H]12
+DBX0107111,"['CYP4F2', 'CYP3A4']",Tocopherol,,Cc1c(C)c2c(c(C)c1O)CC[C@@](C)(CCC[C@H](C)CCC[C@H](C)CCCC(C)C)O2
+DBX0110312,"['CYP4F2', 'CYP3A4']",Tocofersolan,,Cc1c(C)c2c(c(C)c1OC(=O)CCC(=O)OCCO)CC[C@@](C)(CCC[C@H](C)CCC[C@H](C)CCCC(C)C)O2
+DBX0126213,['CYP3A4'],dihydroergocryptine,,CC(C)C[C@H]1C(=O)N2CCC[C@H]2[C@]2(O)O[C@](NC(=O)[C@@H]3C[C@@H]4c5cccc6[nH]cc(c56)C[C@H]4N(C)C3)(C(C)C)C(=O)N12
+DBX0131714,"['CYP4F2', 'CYP3A4']",Tocopheryl acetate,,CC(=O)Oc1c(C)c(C)c2c(c1C)CC[C@@](C)(CCC[C@H](C)CCC[C@H](C)CCCC(C)C)O2
+DBX0132715,['CYP2E1'],"1,4-Dichlorobenzene",,Clc1ccc(Cl)cc1

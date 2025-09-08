@@ -1,5 +1,8 @@
 import pandas as pd
-from chemspipy import ChemSpider
+import numpy as np
+from pandas import DataFrame
+from chemspipy_api import get_SMILES_chemspipy
+from rdkit import Chem
 
 #drugs with enzyme data
 csvfile_enzyme = pd.read_csv("./DataBase/drug_enzyme_db_all.csv", delimiter= ",", header= 0, encoding="utf-8")
@@ -53,22 +56,45 @@ df_cyps = pd.merge(
 
 df_cyps_smd = df_cyps[df_cyps["DrugBank ID"].isin(small_molecule_ids)]
 missing_structures = df_cyps_smd.loc[df_cyps_smd["InChI"].isnull()]
-print(missing_structures)
 
-cs = ChemSpider("LtPG7M2FaS9fbwJuCpUCD84WI1QDJ09fuBbr0CN9") #ChemSpider API
+### Get SMILES using chemspipy (Cached)
+# missing_SMILES: list[tuple[str | None]] | None = get_SMILES_chemspipy(missing_structures)
 
-print(df_cyps_smd.columns)
-missing_smiles: list[tuple[str]] = []
-#list of tuples (DBoriginal, DB ID, CYPs, origname, name, InChI, SMILES)
-n = 0
-for i, drug in missing_structures.iterrows():
-    for result in cs.search(drug["Name"]):
-        n += 1
-        compound = cs.get_compound_info(result.record_id)
-        missing_smiles.append((drug["DrugBank ID"], f"DBX0{i}{n}", drug["CYPs"], drug["Name"], compound["commonName"], None, compound["smiles"]))
-        print(f"For {drug}, result: {cs.get_compound_info(result.record_id)["commonName"]}\nwith SMILES {cs.get_compound_info(result.record_id)["smiles"]}")
-print(missing_smiles)
+# new_smiles_df: DataFrame = pd.DataFrame([
+#     {
+#         "DrugBank ID": t[1],      
+#         "CYPs": t[2],             
+#         "Name": t[4],             
+#         "InChI": np.nan if t[5] is None else t[5], 
+#         "SMILES": t[6]      
+#     }
+#     for t in missing_SMILES])
 
+# new_smiles_df.to_csv("smiles_data_cache.csv", index=False)
+
+df = pd.read_csv("smiles_data_cache.csv")
+
+### Get InChI from SMILES
+
+def smiles_to_inchi(smiles: str) -> str | None:
+    mol = Chem.MolFromSmiles(smiles)
+    smiles = Chem.MolToInchi(mol)
+    return smiles
+    
+df["InChI"] = df["SMILES"].apply(smiles_to_inchi)
+
+df_DrugBank = pd.concat([df_cyps_smd, df], ignore_index=True)
+df_DrugBank_clean = df_DrugBank.dropna(subset=["SMILES"])
+
+# duplicate_names = df_DrugBank_clean[df_DrugBank_clean.duplicated(subset=["Name"], keep=False)]
+# duplicate_inchi = df_DrugBank_clean[df_DrugBank_clean.duplicated(subset=["InChI"], keep=False)]
+
+ids_of_duplicates = ["DBX0106610", "DBX0107111", "DBX0126213"]
+df_DrugBank_clean = df_DrugBank_clean[~df_DrugBank_clean["DrugBank ID"].isin(ids_of_duplicates)]
+
+df_DrugBank_clean.to_csv("DrugBank_curated_df.csv", index=False)
+
+print(df_DrugBank_clean.describe())
 ###CYP counter###
 cyp_counter: dict[str, int] = {}
 for cyps in drug_CYPs.values():
