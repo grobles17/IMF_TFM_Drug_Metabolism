@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
 from pandas import DataFrame
-from chemspipy_api import get_SMILES_chemspipy
-from rdkit import Chem
+from api_calls import *
 
 #drugs with enzyme data
 csvfile_enzyme = pd.read_csv("./DataBase/drug_enzyme_db_all.csv", delimiter= ",", header= 0, encoding="utf-8")
@@ -75,11 +74,6 @@ missing_structures = df_cyps_smd.loc[df_cyps_smd["InChI"].isnull()]
 df = pd.read_csv("smiles_data_cache.csv")
 
 ### Get InChI from SMILES
-
-def smiles_to_inchi(smiles: str) -> str | None:
-    mol = Chem.MolFromSmiles(smiles)
-    smiles = Chem.MolToInchi(mol)
-    return smiles
     
 df["InChI"] = df["SMILES"].apply(smiles_to_inchi)
 
@@ -94,7 +88,6 @@ df_DrugBank_clean = df_DrugBank_clean[~df_DrugBank_clean["DrugBank ID"].isin(ids
 
 df_DrugBank_clean.to_csv("DrugBank_curated_df.csv", index=False)
 
-print(df_DrugBank_clean.describe())
 ###CYP counter###
 cyp_counter: dict[str, int] = {}
 for cyps in drug_CYPs.values():
@@ -103,5 +96,8 @@ for cyps in drug_CYPs.values():
         cyp_counter.setdefault(cyp, 0)
         cyp_counter[cyp] += 1
 
-max_cyp = max(cyp_counter, key=cyp_counter.get)
-#print(f"{max_cyp} = {cyp_counter[max_cyp]}")
+
+if __name__=="__main__":    
+    max_cyp = max(cyp_counter, key=cyp_counter.get)
+    print(f"{max_cyp} = {cyp_counter[max_cyp]}")
+    print(df_DrugBank_clean.describe())

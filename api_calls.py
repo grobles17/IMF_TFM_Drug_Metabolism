@@ -1,6 +1,8 @@
 from chemspipy import ChemSpider
-from chemspipy.errors import ChemSpiPyRateError
 from pandas import DataFrame
+from typing import Any
+
+from rdkit import Chem
 from typing import Any
 
 cs = ChemSpider("UYH8H2lBS03Ow4vwVA1uxCw4MBHXhZk2xURiZmQa") #ChemSpider API
@@ -20,6 +22,11 @@ def get_SMILES_chemspipy(missing_structures: DataFrame)-> list[tuple[Any, str, A
                                    drug["Name"], compound["commonName"], 
                                    None, compound["smiles"]))
     return missing_smiles
+
+def smiles_to_inchi(smile: str) -> Any:
+    mol = Chem.MolFromSmiles(smile)
+    smiles = Chem.MolToInchi(mol)
+    return smiles
 
 if __name__ == "__main__":
     pass
