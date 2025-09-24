@@ -57,15 +57,15 @@ df_cyps_smd = df_cyps[df_cyps["DrugBank ID"].isin(small_molecule_ids)]
 missing_structures = df_cyps_smd.loc[df_cyps_smd["InChI"].isnull()]
 
 ### Get SMILES using chemspipy (Cached)
-# missing_SMILES: list[tuple[str | None]] | None = get_SMILES_chemspipy(missing_structures)
+# missing_SMILES: list[CompoundRecord] | None = get_SMILES_chemspipy(missing_structures)
 
 # new_smiles_df: DataFrame = pd.DataFrame([
 #     {
-#         "DrugBank ID": t[1],      
-#         "CYPs": t[2],             
-#         "Name": t[4],             
-#         "InChI": np.nan if t[5] is None else t[5], 
-#         "SMILES": t[6]      
+#         "DrugBank ID": t.drugbank_id,      
+#         "CYPs": t.cyps,             
+#         "Name": t.common_name,
+#         "InChI": np.nan, 
+#         "SMILES": t.smiles      
 #     }
 #     for t in missing_SMILES])
 
