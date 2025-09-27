@@ -1,6 +1,7 @@
 from numpy.typing import NDArray
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
+from rdkit.Chem import AllChem
 import numpy as np
 
 def embed_inchi(InChI: str) -> NDArray[np.float64]:
@@ -18,7 +19,7 @@ def get_morgan_generator(radius: int = 3, n_bits: int = 2048):
 # Default global generator (common case)
 _default_gen = get_morgan_generator()
 
-def smiles_to_morgan_fingerprint(smiles: str, generator = _default_gen) -> NDArray[np.int16] | None:
+def smiles_to_morgan_fingerprint(smiles: str, generator = _default_gen) -> NDArray[np.int16]:
     """
     Generate a count-based Morgan fingerprint from a SMILES string.
     
@@ -37,9 +38,9 @@ def smiles_to_morgan_fingerprint(smiles: str, generator = _default_gen) -> NDArr
     
     Returns
     -------
-    np.ndarray of shape (fpSize,) and dtype int32
+    np.ndarray of shape (fpSize,) and dtype int16
         Count fingerprint vector where each entry indicates the frequency
-        of the corresponding environment. Returns None if the SMILES
+        of the corresponding environment. Returns zero array if the SMILES
         string cannot be parsed.
     
     Notes
@@ -52,8 +53,15 @@ def smiles_to_morgan_fingerprint(smiles: str, generator = _default_gen) -> NDArr
       as they preserve multiplicities of moieties that may influence
       enzyme-substrate interactions.
     """
+    N_BITS = 2048 #Modify length if Generator's n_bits != 2048
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
-        return None
+        return np.zeros(N_BITS, dtype=np.int16) 
     count_fp = generator.GetCountFingerprint(mol)
-    return np.array(count_fp, dtype=np.int16)
+    # Proper conversion from sparse vector to dense array
+    fp_array = np.zeros(N_BITS, dtype=np.int16)
+    
+    # Fill in the non-zero elements
+    for idx, count_val in count_fp.GetNonzeroElements().items():
+        fp_array[idx] = count_val
+    return fp_array

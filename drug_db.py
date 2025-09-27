@@ -71,13 +71,14 @@ missing_structures = df_cyps_smd.loc[df_cyps_smd["InChI"].isnull()]
 
 # new_smiles_df.to_csv("smiles_data_cache.csv", index=False)
 
-df = pd.read_csv("smiles_data_cache.csv")
+new_smiles_df = pd.read_csv("smiles_data_cache.csv")
+new_smiles_df["CYPs"] = new_smiles_df["CYPs"].apply(eval)
 
 ### Get InChI from SMILES
     
-df["InChI"] = df["SMILES"].apply(smiles_to_inchi)
+new_smiles_df["InChI"] = new_smiles_df["SMILES"].apply(smiles_to_inchi)
 
-df_DrugBank = pd.concat([df_cyps_smd, df], ignore_index=True)
+df_DrugBank = pd.concat([df_cyps_smd, new_smiles_df], ignore_index=True)
 df_DrugBank_clean = df_DrugBank.dropna(subset=["SMILES"])
 
 # duplicate_names = df_DrugBank_clean[df_DrugBank_clean.duplicated(subset=["Name"], keep=False)]
@@ -86,18 +87,20 @@ df_DrugBank_clean = df_DrugBank.dropna(subset=["SMILES"])
 ids_of_duplicates = ["DBX0106610", "DBX0107111", "DBX0126213"]
 df_DrugBank_clean = df_DrugBank_clean[~df_DrugBank_clean["DrugBank ID"].isin(ids_of_duplicates)]
 
+###CYP counter###
+from collections import Counter
+
+cyp_counter = Counter(cyp for cyps in df_DrugBank_clean["CYPs"] for cyp in cyps)
+sorted_cyps = dict(cyp_counter.most_common())
+#Eliminate low frequency CYPs
+uncommon_cyps = [k for k, v in sorted_cyps.items() if v < 10]
+df_DrugBank_clean["CYPs"] = df_DrugBank_clean["CYPs"].apply(
+    lambda cyps: [cyp for cyp in cyps if cyp not in uncommon_cyps])
+
 df_DrugBank_clean.to_csv("DrugBank_curated_df.csv", index=False)
 
-###CYP counter###
-cyp_counter: dict[str, int] = {}
-for cyps in drug_CYPs.values():
-    for cyp in cyps:
-        # setdefault initializes the count to 0 if the key doesn't exist
-        cyp_counter.setdefault(cyp, 0)
-        cyp_counter[cyp] += 1
-
-
 if __name__=="__main__":    
-    max_cyp = max(cyp_counter, key=cyp_counter.get)
-    print(f"{max_cyp} = {cyp_counter[max_cyp]}")
-    print(df_DrugBank_clean.describe())
+    print(df_DrugBank_clean["CYPs"].describe())
+    cyp_counter2 = Counter(cyp for cyps in df_DrugBank_clean["CYPs"] for cyp in cyps)
+    print(cyp_counter2)
+    print(cyp_counter)
