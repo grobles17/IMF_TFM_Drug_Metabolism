@@ -69,14 +69,13 @@ missing_structures = df_cyps_smd.loc[df_cyps_smd["InChI"].isnull()]
 #     }
 #     for t in missing_SMILES])
 
+# ### Get InChI from SMILES (cached) 
+# new_smiles_df["InChI"] = new_smiles_df["SMILES"].apply(smiles_to_inchi)
+# ### Cache the new data to avoid recalling API
 # new_smiles_df.to_csv("smiles_data_cache.csv", index=False)
 
 new_smiles_df = pd.read_csv("smiles_data_cache.csv")
 new_smiles_df["CYPs"] = new_smiles_df["CYPs"].apply(eval)
-
-### Get InChI from SMILES
-    
-new_smiles_df["InChI"] = new_smiles_df["SMILES"].apply(smiles_to_inchi)
 
 df_DrugBank = pd.concat([df_cyps_smd, new_smiles_df], ignore_index=True)
 df_DrugBank_clean = df_DrugBank.dropna(subset=["SMILES"])
@@ -92,15 +91,20 @@ from collections import Counter
 
 cyp_counter = Counter(cyp for cyps in df_DrugBank_clean["CYPs"] for cyp in cyps)
 sorted_cyps = dict(cyp_counter.most_common())
+
 #Eliminate low frequency CYPs
 uncommon_cyps = [k for k, v in sorted_cyps.items() if v < 10]
 df_DrugBank_clean["CYPs"] = df_DrugBank_clean["CYPs"].apply(
     lambda cyps: [cyp for cyp in cyps if cyp not in uncommon_cyps])
 
-df_DrugBank_clean.to_csv("DrugBank_curated_df.csv", index=False)
+df_DrugBank_clean.to_csv("DrugBank_curated_df.csv", index=False) 
 
-if __name__=="__main__":    
+if __name__=="__main__":  
+    ##### 
     print(df_DrugBank_clean["CYPs"].describe())
     cyp_counter2 = Counter(cyp for cyps in df_DrugBank_clean["CYPs"] for cyp in cyps)
-    print(cyp_counter2)
-    print(cyp_counter)
+    cyps_sum = sum(cyp_counter.values())
+    cyps_unique = len(cyp_counter)
+    mean = cyps_sum/cyps_unique
+    print(mean)    
+    print(len(cyp_counter2))
