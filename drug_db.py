@@ -56,7 +56,8 @@ df_cyps = pd.merge(
 df_cyps_smd = df_cyps[df_cyps["DrugBank ID"].isin(small_molecule_ids)]
 missing_structures = df_cyps_smd.loc[df_cyps_smd["InChI"].isnull()]
 
-### Get SMILES using chemspipy (Cached)
+### Get SMILES using chemspipy (Already cached - Uncomment if you want to recall API) ###
+
 # missing_SMILES: list[CompoundRecord] | None = get_SMILES_chemspipy(missing_structures)
 
 # new_smiles_df: DataFrame = pd.DataFrame([
@@ -80,31 +81,31 @@ new_smiles_df["CYPs"] = new_smiles_df["CYPs"].apply(eval)
 df_DrugBank = pd.concat([df_cyps_smd, new_smiles_df], ignore_index=True)
 df_DrugBank_clean = df_DrugBank.dropna(subset=["SMILES"])
 
-# duplicate_names = df_DrugBank_clean[df_DrugBank_clean.duplicated(subset=["Name"], keep=False)]
-# duplicate_inchi = df_DrugBank_clean[df_DrugBank_clean.duplicated(subset=["InChI"], keep=False)]
-
-ids_of_duplicates = ["DBX0106610", "DBX0107111", "DBX0126213"]
-df_DrugBank_clean = df_DrugBank_clean[~df_DrugBank_clean["DrugBank ID"].isin(ids_of_duplicates)]
+### InChI duplicates: keep the first occurrence; others are flagged for removal
+duplicate_inchi = df_DrugBank_clean[df_DrugBank_clean.duplicated(subset=["InChI"], keep="first")]
+### Gather DrugBank IDs of duplicates
+ids_to_drop = duplicate_inchi["DrugBank ID"].tolist() 
+### Remove duplicates from the main DataFrame
+df_DrugBank_clean = df_DrugBank_clean[~df_DrugBank_clean["DrugBank ID"].isin(ids_to_drop)]
 
 ###CYP counter###
 from collections import Counter
 
 cyp_counter = Counter(cyp for cyps in df_DrugBank_clean["CYPs"] for cyp in cyps)
-sorted_cyps = dict(cyp_counter.most_common())
 
 #Eliminate low frequency CYPs
-uncommon_cyps = [k for k, v in sorted_cyps.items() if v < 10]
-df_DrugBank_clean["CYPs"] = df_DrugBank_clean["CYPs"].apply(
+THRESHOLD = 10
+uncommon_cyps = [k for k, v in cyp_counter.items() if v < THRESHOLD]
+df_DrugBank_curated = df_DrugBank_clean.copy()
+df_DrugBank_curated["CYPs"] = df_DrugBank_clean["CYPs"].apply(
     lambda cyps: [cyp for cyp in cyps if cyp not in uncommon_cyps])
 
-df_DrugBank_clean.to_csv("DrugBank_curated_df.csv", index=False) 
+df_DrugBank_curated.to_csv("DrugBank_curated_df.csv", index=False) 
 
 if __name__=="__main__":  
     ##### 
     print(df_DrugBank_clean["CYPs"].describe())
-    cyp_counter2 = Counter(cyp for cyps in df_DrugBank_clean["CYPs"] for cyp in cyps)
-    cyps_sum = sum(cyp_counter.values())
-    cyps_unique = len(cyp_counter)
-    mean = cyps_sum/cyps_unique
-    print(mean)    
-    print(len(cyp_counter2))
+    df_cyp_counter = pd.DataFrame([(cyp, count) for cyp, count in cyp_counter.items()], 
+                              columns= ["CYP", "DrugCount"])
+    print(df_cyp_counter["DrugCount"].describe())
+    print(df_cyp_counter.sort_values(by="DrugCount", ascending=False))
