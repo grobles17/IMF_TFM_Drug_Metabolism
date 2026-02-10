@@ -6,6 +6,20 @@ from rdkit import Chem
 
 from dataclasses import dataclass
 
+# Environment-based API key loading
+import os
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
+api_key = os.environ.get("CHEMSPI_API_KEY")
+if not api_key:
+    raise RuntimeError("CHEMSPI_API_KEY environment variable not set")
+
+_cs_default = ChemSpider(api_key)  # ChemSpider API
+
 @dataclass
 class CompoundRecord:
     drugbank_id: str
@@ -15,9 +29,6 @@ class CompoundRecord:
     common_name: str | None
     smiles: str | None
 
-_cs_default = ChemSpider("UYH8H2lBS03Ow4vwVA1uxCw4MBHXhZk2xURiZmQa") #ChemSpider API
-
-#list of tuples (DBoriginal, DB ID, CYPs, origname, name, InChI, SMILES)
 
 def get_SMILES_chemspipy(missing_structures: DataFrame, 
                          cs_client = _cs_default)-> list[CompoundRecord]:
@@ -76,6 +87,7 @@ def get_SMILES_chemspipy(missing_structures: DataFrame,
                 continue
     return compound_records
 
+
 def smiles_to_inchi(smiles: str) -> Optional[str]:
     """
     Convert a SMILES string into its corresponding InChI representation.
@@ -101,4 +113,3 @@ def smiles_to_inchi(smiles: str) -> Optional[str]:
 if __name__ == "__main__":
     print(smiles_to_inchi("CCOCO"))   # Should print a valid InChI string
     print(smiles_to_inchi("CccOc"))
-        

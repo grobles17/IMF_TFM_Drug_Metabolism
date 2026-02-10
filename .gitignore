@@ -1,0 +1,12 @@
+# Dependency and build ignore
+.env
+__pycache__/
+*.pyc
+*.pyo
+.env.local
+
+# Data base directory (ignore any generated/temporary data)
+DataBase/
+
+# Memorias proposal document
+Memorias\TFM Drug metabolism predictor propuesta (es).docx
