@@ -87,6 +87,10 @@ duplicate_inchi = df_DrugBank_clean[df_DrugBank_clean.duplicated(subset=["InChI"
 ids_to_drop = duplicate_inchi["DrugBank ID"].tolist() 
 ### Remove duplicates from the main DataFrame
 df_DrugBank_clean = df_DrugBank_clean[~df_DrugBank_clean["DrugBank ID"].isin(ids_to_drop)]
+df_DrugBank_clean = df_DrugBank_clean[df_DrugBank_clean['DrugBank ID'] != 'DB00515'] 
+# We drop cis-platin because MolE fails to process it, likely due to its complex structure with metal coordination. 
+# This is a known limitation of many cheminformatics tools when handling organometallic compounds. 
+
 
 ###CYP counter###
 from collections import Counter
@@ -101,11 +105,13 @@ df_DrugBank_curated["CYPs"] = df_DrugBank_clean["CYPs"].apply(
     lambda cyps: [cyp for cyp in cyps if cyp not in uncommon_cyps])
 
 df_DrugBank_curated.to_csv("DrugBank_curated_df.csv", index=False) 
+cyp_counter_curated = Counter(cyp for cyps in df_DrugBank_curated["CYPs"] for cyp in cyps)
 
 if __name__=="__main__":  
-    ##### 
-    print(df_DrugBank_clean["CYPs"].describe())
+    ##### CYP distribution analysis#####
     df_cyp_counter = pd.DataFrame([(cyp, count) for cyp, count in cyp_counter.items()], 
                               columns= ["CYP", "DrugCount"])
+    df_cyp_counter_curated = pd.DataFrame([(cyp, count) for cyp, count in cyp_counter_curated.items()], 
+                              columns= ["CYP", "DrugCount"])
     print(df_cyp_counter["DrugCount"].describe())
-    print(df_cyp_counter.sort_values(by="DrugCount", ascending=False))
+    print(df_cyp_counter_curated["DrugCount"].describe())

@@ -84,6 +84,7 @@ def get_SMILES_chemspipy(missing_structures: DataFrame,
                 compound_records.append(record)
             except Exception:
                 #Skip compounds with incomplete info
+                print(f"Failed to retrieve details for record ID {result.record_id} ({drug['Name']})")
                 continue
     return compound_records
 
