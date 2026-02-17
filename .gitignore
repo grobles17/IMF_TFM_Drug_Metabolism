@@ -5,8 +5,9 @@ __pycache__/
 *.pyo
 .env.local
 
-# Data base directory (ignore any generated/temporary data)
+# Data base directory 
 DataBase/
+test.py
 
 # Memorias proposal document
 Memorias\TFM Drug metabolism predictor propuesta (es).docx
