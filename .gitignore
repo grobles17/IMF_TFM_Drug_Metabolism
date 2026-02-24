@@ -5,9 +5,10 @@ __pycache__/
 *.pyo
 .env.local
 
-# Data base directory 
-DataBase/
-test.py
+# Data base directory – ignore everything except DataBase/InChI/
+DataBase/**
+!DataBase/InChI/
+!DataBase/InChI/**
 
 # Memorias proposal document
 Memorias\TFM Drug metabolism predictor propuesta (es).docx

@@ -114,3 +114,4 @@ def smiles_to_inchi(smiles: str) -> Optional[str]:
 if __name__ == "__main__":
     print(smiles_to_inchi("CCOCO"))   # Should print a valid InChI string
     print(smiles_to_inchi("CccOc"))
+    print(api_key)
