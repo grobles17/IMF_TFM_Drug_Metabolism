@@ -1,0 +1,2 @@
+DataBase/InChI/inchi_output.txt filter=lfs diff=lfs merge=lfs -text
+DataBase/InChI/inchi_tokens.txt filter=lfs diff=lfs merge=lfs -text
