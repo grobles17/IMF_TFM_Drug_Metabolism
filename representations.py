@@ -1,9 +1,16 @@
+from pyexpat import model
+
 import numpy as np
 import pandas as pd
 
 from numpy.typing import NDArray
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
+
+import torch
+import numpy as np
+from numpy.typing import NDArray
+from transformers import AutoModel, AutoTokenizer
 
 # MolE representations were obtained following the instructions in the original repository:
 # https://github.com/rolayoalarcon/MolE?tab=readme-ov-file
@@ -74,18 +81,10 @@ def smiles_to_morgan_fingerprint(smiles: str, generator = _default_gen) -> NDArr
 _CHEMBERTA_MODEL_NAME = "seyonec/ChemBERTa-zinc-base-v1"
 
 _tokenizer = AutoTokenizer.from_pretrained(_CHEMBERTA_MODEL_NAME)
-_chemberta_model = AutoModel.from_pretrained(_CHEMBERTA_MODEL_NAME)
+_chemberta_model = AutoModel.from_pretrained(_CHEMBERTA_MODEL_NAME, use_safetensors=True)
 _chemberta_model.eval()  # disable dropout
 
 def chemberta_embedder(smiles: str) -> NDArray[np.float32]:
-    inputs = _tokenizer(
-        smiles,
-        return_tensors="pt",
-        truncation=True,
-        padding=True,
-        max_length=1024 #vancomycin's SMILES has more than 700 tokens, 
-        #so we set a higher limit to avoid truncation for large molecules
-    )
     """
     Generate a transformer-based molecular embedding from a SMILES string
     using a pretrained ChemBERTa model.
@@ -115,6 +114,13 @@ def chemberta_embedder(smiles: str) -> NDArray[np.float32]:
     embeddings, ensuring consistent numeric types across learned
     representations in the project.
     """
+    inputs = _tokenizer(
+        smiles,
+        return_tensors="pt",
+        truncation=True,
+        padding=True,
+        max_length=1024) #vancomycin's SMILES has more than 700 tokens, 
+        #so we set a higher limit to avoid truncation for large molecules
 
     with torch.no_grad():
         outputs = _chemberta_model(**inputs)
@@ -131,8 +137,76 @@ def chemberta_embedder(smiles: str) -> NDArray[np.float32]:
 
     return embedding.squeeze(0).cpu().numpy().astype(np.float64) #float 64 is used for compatibility with MolE embeddings, which are also float64.
 
+# ==========================================================
+# InChI Embedder (Author-trained MLM)
+# ==========================================================
+_INCHI_MODEL_PATH = "./inchi_embedder_final"
 
-def featurize_smiles(smiles: str, method: str = "morgan") -> NDArray[np.int16 | np.float64]:
+_inchi_tokenizer = AutoTokenizer.from_pretrained(_INCHI_MODEL_PATH)
+_inchi_model = AutoModel.from_pretrained(
+    _INCHI_MODEL_PATH,
+    add_pooling_layer=False  # remove unused pooler
+)
+_inchi_model.eval()  # disable dropout
+
+def inchi_embedder(inchi: str) -> NDArray[np.float64]:
+    """
+    Generate a transformer-based molecular embedding from an InChI string
+    using the user-trained MLM.
+
+    This function encodes the molecular structure into a fixed-length
+    continuous vector by tokenizing the InChI string and forwarding it
+    through the pretrained transformer encoder. A mean pooling operation
+    over token embeddings (excluding padding tokens) is applied to obtain
+    a single molecular representation.
+
+    Parameters
+    ----------
+    inchi : str
+        InChI representation of the molecule to be embedded.
+
+    Returns
+    -------
+    np.ndarray of shape (hidden_size,) and dtype float64
+        Continuous embedding vector representing the molecule in latent
+        space.
+
+    Notes
+    -----
+    - A maximum token length of 512 is used, matching the configuration
+      employed during MLM pretraining.
+    - Sequences longer than 512 tokens are truncated to ensure
+      architectural consistency with the trained model
+      (max_position_embeddings = 514).
+    - The output is cast to float64 for comparability with MolE and
+      ChemBERTa embeddings, ensuring consistent numeric types across
+      learned representations in the project.
+    """
+
+    inputs = _inchi_tokenizer(
+        inchi,
+        return_tensors="pt",
+        truncation=True,
+        padding=True,
+        max_length=512  # MUST match training configuration
+    )
+
+    with torch.no_grad():
+        outputs = _inchi_model(**inputs)
+
+    # Mean pooling over token embeddings (excluding padding)
+    last_hidden = outputs.last_hidden_state  # (1, seq_len, hidden_dim)
+    attention_mask = inputs["attention_mask"].unsqueeze(-1)
+
+    masked_hidden = last_hidden * attention_mask
+    sum_hidden = masked_hidden.sum(dim=1)
+    valid_tokens = attention_mask.sum(dim=1)
+
+    embedding = sum_hidden / valid_tokens
+
+    return embedding.squeeze(0).cpu().numpy().astype(np.float64)
+
+def featurize_smiles(structure: str, method: str = "morgan") -> NDArray[np.int16 | np.float64]:
     """
     Featurize a SMILES string into a numerical vector using the specified method.
 
@@ -148,6 +222,7 @@ def featurize_smiles(smiles: str, method: str = "morgan") -> NDArray[np.int16 | 
         Featurization strategy to apply. Supported options are:
         - "morgan": count-based Morgan fingerprint (int16).
         - "chemberta": transformer-based embedding (float64).
+        - "inchi": user-trained transformer-based embedding from InChI (float64).
 
     Returns
     -------
@@ -161,9 +236,11 @@ def featurize_smiles(smiles: str, method: str = "morgan") -> NDArray[np.int16 | 
         If an unsupported featurization method is specified.
     """
     if method == "morgan":
-        return smiles_to_morgan_fingerprint(smiles).astype(np.int16)
+        return smiles_to_morgan_fingerprint(structure).astype(np.int16)
     elif method == "chemberta":
-        return chemberta_embedder(smiles).astype(np.float64)
+        return chemberta_embedder(structure).astype(np.float64)
+    elif method == "inchi":
+        return inchi_embedder(structure).astype(np.float64)
     else:
         raise ValueError(f"Unknown featurization method: {method}")
 
@@ -174,17 +251,24 @@ if __name__ == "__main__":
     ids = []
     fingerprints = []
     chemberta_embeddings = []
+    inchis = []
 
-    for compound_id, smiles in zip(db["DrugBank ID"], db["SMILES"]):
+    for compound_id, smiles, inchi_str in zip(
+    db["DrugBank ID"],
+    db["SMILES"],
+    db["InChI"]):
         fp = featurize_smiles(smiles, method="morgan")
         emb = featurize_smiles(smiles, method="chemberta")
+        inchi = featurize_smiles(inchi_str, method="inchi")
         ids.append(compound_id)
         fingerprints.append(fp)
         chemberta_embeddings.append(emb)
+        inchis.append(inchi)
 
     # Convert to 2D numpy array
     fingerprint_matrix = np.vstack(fingerprints)
     chemberta_matrix = np.vstack(chemberta_embeddings)
+    inchi_matrix = np.vstack(inchis)
 
     # Create DataFrame with explicit column names
     morgan_df = pd.DataFrame(
@@ -196,6 +280,11 @@ if __name__ == "__main__":
         chemberta_matrix,
         index=ids,
         columns=[str(i) for i in range(chemberta_matrix.shape[1])]
+    )
+    inchi_df = pd.DataFrame(
+        inchi_matrix,
+        index=ids,
+        columns=[str(i) for i in range(inchi_matrix.shape[1])]
     )
     # Save as TSV with ID as index
     morgan_df.to_csv(
@@ -210,6 +299,12 @@ if __name__ == "__main__":
         index_label="DrugBank ID"
     )
 
+    inchi_df.to_csv(
+        "inchi_output_representation.tsv",
+        sep="\t",
+        index_label="DrugBank ID"
+    )
+
     mole_df = pd.read_csv("MolE_output_representation.tsv", sep="\t", index_col=0)
     print("Shape of the MolE representation DataFrame:")
     print(mole_df.shape)
@@ -218,3 +313,5 @@ if __name__ == "__main__":
     print(round(morgan_df.memory_usage(deep=True).sum() / 1024**2, 2), "MB")
     print("Shape of the ChemBERTa embedding DataFrame:")
     print(chemberta_df.shape)
+    print("Shape of the InChI embedding DataFrame:")
+    print(inchi_df.shape)

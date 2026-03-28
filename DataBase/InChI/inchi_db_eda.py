@@ -8,7 +8,6 @@ inchi_file = os.path.join(script_dir, "inchi_output.txt")
 db = pd.read_csv(inchi_file, header=None, names=["InChI"], sep="\t")
 
 # --- 1. Load trained tokenizer ---
-# (Adjust path to where you saved it)
 tokenizer = ByteLevelBPETokenizer(
     vocab=os.path.join(script_dir, "inchi_tokenizer", "vocab.json"),
     merges=os.path.join(script_dir, "inchi_tokenizer", "merges.txt")
