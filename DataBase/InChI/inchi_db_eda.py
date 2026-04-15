@@ -7,7 +7,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 inchi_file = os.path.join(script_dir, "inchi_output.txt")
 db = pd.read_csv(inchi_file, header=None, names=["InChI"], sep="\t")
 
-# --- 1. Load trained tokenizer ---
+# --- Load trained tokenizer ---
 tokenizer = ByteLevelBPETokenizer(
     vocab=os.path.join(script_dir, "inchi_tokenizer", "vocab.json"),
     merges=os.path.join(script_dir, "inchi_tokenizer", "merges.txt")
@@ -16,6 +16,12 @@ print("Loaded ByteLevelBPETokenizer")
 
 # --- Function to tokenize all InChIs and save token IDs ---
 def main():
+    """Tokenize all InChI strings in the global database and save the token IDs.
+
+    The function encodes each InChI using the pre-loaded tokenizer and writes the resulting
+    token IDs to `inchi_tokens.txt` (one line per InChI, space-separated tokens).
+    Progress is printed every 100,000 processed entries.
+    """
     output_file = os.path.join(script_dir, "inchi_tokens.txt")
     total = len(db)
     print(f"Starting tokenization of {total} InChIs...")
@@ -31,6 +37,19 @@ def main():
 import random
 # --- Verification: compare a random line from saved file with fresh encoding ---
 def verify_saved_tokens_random():
+    """Verify that saved token IDs match fresh encoding for a random InChI.
+
+    This function reads the cached token IDs from `inchi_tokens.txt`, selects a
+    random line, and compares the saved IDs against a freshly encoded version of
+    the original InChI string. It also prints the decoded InChI for visual
+    confirmation. The check is deterministic and serves as a sanity test for
+    tokenization consistency.
+
+    Assumes:
+        - `db` is a pandas DataFrame with a column 'InChI'.
+        - `tokenizer` is a loaded ByteLevelBPETokenizer instance.
+        - `script_dir` points to the directory containing `inchi_tokens.txt`.
+    """
     tokens_file = os.path.join(script_dir, "inchi_tokens.txt")
     if not os.path.exists(tokens_file):
         print(f"Error: {tokens_file} not found.")
@@ -67,7 +86,7 @@ def verify_saved_tokens_random():
         print(f"Saved tokens : {tokenizer.decode(saved_ids, skip_special_tokens=False)}")
         print(f"Fresh tokens : {tokenizer.decode(fresh_ids, skip_special_tokens=False)}")
     else:
-        print("✓ Verification passed: saved tokens match fresh encoding.")
+        print("Verification passed: saved tokens match fresh encoding.")
 
 import numpy as np
 import os
@@ -84,7 +103,7 @@ def compute_token_length_percentiles():
 
     # Convert to numpy array for percentile calculation
     lengths_np = np.array(lengths)
-    percentiles = [50, 75, 90, 99, 99.9]
+    percentiles = [1, 50, 75, 90, 99, 99.9]
     p = np.percentile(lengths_np, percentiles)
     print(f"\n--- Token Length Statistics ---")
     print(f"Total sequences: {len(lengths)}")
@@ -102,7 +121,7 @@ if __name__ == "__main__":
     max_str_len = max(db["InChI"].apply(len))
     print(f"Longest InChI (characters): {max_str_len}")
     
-    # --- 3. Find the InChI with maximum string length and tokenize it ---
+    # --- 2. Find the InChI with maximum string length and tokenize it ---
     # Get the actual string
     longest_inchi = db.loc[db["InChI"].str.len().idxmax(), "InChI"]
     # Tokenize
