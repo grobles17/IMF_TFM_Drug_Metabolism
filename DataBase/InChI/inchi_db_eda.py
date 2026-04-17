@@ -129,6 +129,7 @@ if __name__ == "__main__":
     token_len = len(encoded.ids)
     print(f"Longest InChI tokenized length: {token_len} tokens")
     print(f"Sample tokens: {encoded.tokens[:15]}...")  # show first 15
+    
     # --- Verification: compare a random line from saved file with fresh encoding ---
     #verify_saved_tokens_random()
 

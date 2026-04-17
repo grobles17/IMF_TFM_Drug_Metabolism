@@ -55,8 +55,7 @@ def main_inchi_db():
                     success_count += 1
                 else:
                     failure_count += 1
-
-            # Optional: flush output occasionally (not required, but safe)
+            # Flush after each chunk to ensure progress is saved
             out_f.flush()
 
     end_time = time.time()
