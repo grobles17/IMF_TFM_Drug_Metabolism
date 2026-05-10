@@ -98,7 +98,7 @@ from collections import Counter
 cyp_counter = Counter(cyp for cyps in df_DrugBank_clean["CYPs"] for cyp in cyps)
 
 #Eliminate low frequency CYPs
-THRESHOLD = 10
+THRESHOLD = 50
 uncommon_cyps = [k for k, v in cyp_counter.items() if v < THRESHOLD]
 df_DrugBank_curated = df_DrugBank_clean.copy()
 df_DrugBank_curated["CYPs"] = df_DrugBank_clean["CYPs"].apply(
