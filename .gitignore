@@ -6,13 +6,13 @@ __pycache__/
 .env.local
 
 # Data base directory – ignore everything except DataBase/InChI/
-DataBase/**
-!DataBase/InChI/
-!DataBase/InChI/**
+DataBases/**
+!DataBases/InChI/
+!DataBases/InChI/**
 
 # Memorias proposal document
 Memorias\TFM Drug metabolism predictor propuesta (es).docx
 Memorias/TFM Drug metabolism predictor propuesta (es).docx
 
 # Trained model checkpoints
-/inchi_embedder/
+DataBases/InChI/inchi_embedder_checkpoints/

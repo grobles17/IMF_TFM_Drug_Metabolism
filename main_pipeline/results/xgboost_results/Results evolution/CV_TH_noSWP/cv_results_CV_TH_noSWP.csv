@@ -1,0 +1,19 @@
+param_set,params,macro_mcc
+0,"{'learning_rate': 0.05, 'max_depth': 3, 'n_estimators': 100}",0.2253612355220516
+1,"{'learning_rate': 0.05, 'max_depth': 3, 'n_estimators': 200}",0.23120276959353317
+2,"{'learning_rate': 0.05, 'max_depth': 6, 'n_estimators': 100}",0.23365314125807887
+3,"{'learning_rate': 0.05, 'max_depth': 6, 'n_estimators': 200}",0.23419481722957325
+4,"{'learning_rate': 0.05, 'max_depth': 9, 'n_estimators': 100}",0.23178047629801019
+5,"{'learning_rate': 0.05, 'max_depth': 9, 'n_estimators': 200}",0.23156938238417007
+6,"{'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 100}",0.23800805377456116
+7,"{'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 200}",0.23246446564792855
+8,"{'learning_rate': 0.1, 'max_depth': 6, 'n_estimators': 100}",0.2363393493529958
+9,"{'learning_rate': 0.1, 'max_depth': 6, 'n_estimators': 200}",0.23584180906340288
+10,"{'learning_rate': 0.1, 'max_depth': 9, 'n_estimators': 100}",0.23206382378061408
+11,"{'learning_rate': 0.1, 'max_depth': 9, 'n_estimators': 200}",0.24291916607948424
+12,"{'learning_rate': 0.3, 'max_depth': 3, 'n_estimators': 100}",0.2303078532262272
+13,"{'learning_rate': 0.3, 'max_depth': 3, 'n_estimators': 200}",0.2268534384291061
+14,"{'learning_rate': 0.3, 'max_depth': 6, 'n_estimators': 100}",0.22509356310737735
+15,"{'learning_rate': 0.3, 'max_depth': 6, 'n_estimators': 200}",0.23256434841230658
+16,"{'learning_rate': 0.3, 'max_depth': 9, 'n_estimators': 100}",0.23648391836380808
+17,"{'learning_rate': 0.3, 'max_depth': 9, 'n_estimators': 200}",0.23308814828208252
