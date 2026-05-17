@@ -1,7 +1,9 @@
 import time
 import pandas as pd
 from rdkit import Chem
+import os
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def smiles_to_inchi(smiles: str) -> str | None:
     """
@@ -20,9 +22,9 @@ def smiles_to_inchi(smiles: str) -> str | None:
 
 
 def main_inchi_db():
-    # ========== CONFIGURATION ==========
-    input_file = "smiles_chembl.smi"
-    output_file = "inchi_output.txt" 
+    # CONFIG
+    input_file = os.path.join(SCRIPT_DIR, "smiles_chembl.smi")
+    output_file = os.path.join(SCRIPT_DIR, "inchi_output.txt")
     sep = "\t"                     
     names = ["SMILES", "ChEMBL_ID"] # input has no header
     chunk_size = 10000              # process in chunks to avoid huge memory use
@@ -61,7 +63,7 @@ def main_inchi_db():
     end_time = time.time()
     elapsed = end_time - start_time
 
-    # ========== STATISTICS ==========
+    # STATISTICS 
     print("\n" + "="*50)
     print("CONVERSION COMPLETE")
     print("="*50)
@@ -84,5 +86,5 @@ def main_inchi_db():
 
 if __name__ == "__main__":
     # main_inchi_db()  # Uncomment to run the conversion
-    inchi_db = pd.read_csv("./DataBase/InChI/inchi_output.txt", header=None, names=["InChI"], sep="\t")
+    inchi_db = pd.read_csv(os.path.join(SCRIPT_DIR, "inchi_output.txt"), header=None, names=["InChI"], sep="\t")
     print(inchi_db.head())

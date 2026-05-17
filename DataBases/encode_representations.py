@@ -21,6 +21,11 @@ from transformers import AutoModel, AutoTokenizer
 import torch
 from transformers import AutoTokenizer, AutoModel
 
+import os
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "representations"))
+
 ### Morgan fingerprint generation using RDKit's rdFingerprintGenerator with count-based encoding. ###
 # Create the generator once at import time
 def get_morgan_generator(radius: int = 3, n_bits: int = 2048):
@@ -137,9 +142,7 @@ def chemberta_embedder(smiles: str) -> NDArray[np.float32]:
 
     return embedding.squeeze(0).cpu().numpy().astype(np.float64) #float 64 is used for compatibility with MolE embeddings, which are also float64.
 
-# ==========================================================
 # InChI Embedder (Author-trained MLM)
-# ==========================================================
 _INCHI_MODEL_PATH = "./inchi_embedder_final"
 
 _inchi_tokenizer = AutoTokenizer.from_pretrained(_INCHI_MODEL_PATH)
@@ -246,7 +249,7 @@ def featurize_smiles(structure: str, method: str = "morgan") -> NDArray[np.int16
 
     
 if __name__ == "__main__":
-    db = pd.read_csv("DrugBank_curated_df.csv")
+    db = pd.read_csv(os.path.join(SCRIPT_DIR, "DrugBank_curated_df.csv"))
 
     ids = []
     fingerprints = []
@@ -287,25 +290,27 @@ if __name__ == "__main__":
         columns=[str(i) for i in range(inchi_matrix.shape[1])]
     )
     # Save as TSV with ID as index
-    morgan_df.to_csv(
-        "morgan_output_representation.tsv",
+    morgan_df.to_csv(os.path.join(SCRIPT_DIR,
+        "morgan_output_representation.tsv"),
         sep="\t", # Separatar is tab for consistency with previous files
         index_label="DrugBank ID"
     )
 
-    chemberta_df.to_csv(
-        "chemberta_output_representation.tsv",
+    chemberta_df.to_csv(os.path.join(SCRIPT_DIR,
+        "chemberta_output_representation.tsv"),
         sep="\t",
         index_label="DrugBank ID"
     )
 
-    inchi_df.to_csv(
-        "inchi_output_representation.tsv",
+    inchi_df.to_csv(os.path.join(SCRIPT_DIR,
+        "inchi_output_representation.tsv"),
         sep="\t",
         index_label="DrugBank ID"
     )
 
-    mole_df = pd.read_csv("MolE_output_representation.tsv", sep="\t", index_col=0)
+    mole_df = pd.read_csv(os.path.join(OUTPUT_DIR, "MolE_output_representation.tsv"), 
+                          sep="\t", 
+                          index_col=0)
     print("Shape of the MolE representation DataFrame:")
     print(mole_df.shape)
     print("Shape of the Morgan fingerprint DataFrame:")

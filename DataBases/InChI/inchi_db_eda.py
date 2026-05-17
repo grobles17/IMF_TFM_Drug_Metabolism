@@ -8,14 +8,14 @@ inchi_file = os.path.join(script_dir, "inchi_output.txt")
 db = pd.read_csv(inchi_file, header=None, names=["InChI"], sep="\t")
 db_smiles = pd.read_csv(os.path.join(script_dir, "smiles_chembl.smi"), header=None, names = ["SMILES", "ChEMBL_ID"], sep="\t")
 tokens_file = os.path.join(script_dir, "inchi_tokens.txt")
-# --- Load trained tokenizer ---
+# Load trained tokenizer 
 tokenizer = ByteLevelBPETokenizer(
     vocab=os.path.join(script_dir, "inchi_tokenizer", "vocab.json"),
     merges=os.path.join(script_dir, "inchi_tokenizer", "merges.txt")
 )
 print("Loaded ByteLevelBPETokenizer")
 
-# --- Function to tokenize all InChIs and save token IDs ---
+# Function to tokenize all InChIs and save token IDs 
 def main():
     """Tokenize all InChI strings in the global database and save the token IDs.
 
@@ -36,7 +36,7 @@ def main():
     print(f"Tokenization complete. Output saved to {output_file}")
 
 import random
-# --- Verification: compare a random line from saved file with fresh encoding ---
+# Verification: compare a random line from saved file with fresh encoding 
 def verify_saved_tokens_random():
     """Verify that saved token IDs match fresh encoding for a random InChI.
 
@@ -94,9 +94,9 @@ import os
 
 import numpy as np
 
-# --- Compute InChI length percentiles ---
+# Compute InChI length percentiles
 def compute_inchi_length_percentiles():
-    """Compute character‑length percentiles for the InChI database file.
+    """Compute character-length percentiles for the InChI database file.
 
     Reads the InChI strings from `inchi_output.txt`, calculates the character 
     length of each line, and prints summary statistics including mean, median, 
@@ -192,7 +192,7 @@ def analyze_duplicates(df, df_smiles):
 
 
 def compute_token_length_percentiles():
-    """Compute token‑length percentiles from the tokenized InChI file.
+    """Compute token-length percentiles from the tokenized InChI file.
     
     Same output as `compute_inchi_length_percentiles()`, but operates on 
     the tokenized version of the InChI data."""

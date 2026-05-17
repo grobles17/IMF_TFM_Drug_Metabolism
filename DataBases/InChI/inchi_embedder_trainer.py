@@ -15,19 +15,13 @@ from transformers import (
 from tokenizers import ByteLevelBPETokenizer
 
 def main():
-    # ============================================================
     # 1. Reproducibility
-    # ============================================================
-
     SEED = 17
     set_seed(SEED)
     torch.manual_seed(SEED)
     np.random.seed(SEED)
 
-    # ============================================================
     # 2. Paths
-    # ============================================================
-
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
     VOCAB_PATH = os.path.join(SCRIPT_DIR, "inchi_tokenizer", "vocab.json")
@@ -36,10 +30,7 @@ def main():
 
     MODEL_SAVE_PATH = os.path.join(SCRIPT_DIR, "inchi_embedder_final")
 
-    # ============================================================
     # 3. Load Tokenizer (SAFE VERSION – No internal truncation)
-    # ============================================================
-
     tokenizer_bpe = ByteLevelBPETokenizer(
         vocab=VOCAB_PATH,
         merges=MERGES_PATH
@@ -62,10 +53,7 @@ def main():
 
     vocab_size = len(fast_tokenizer)
 
-    # ============================================================
     # 4. Model Configuration (Lightweight but Robust)
-    # ============================================================
-
     MAX_SEQ_LENGTH = 512 
 
     config = RobertaConfig(
@@ -88,10 +76,7 @@ def main():
     print(model.config.max_position_embeddings)
     print(f"Model parameters: {model.num_parameters():,}")
 
-    # ============================================================
     # 5. Dataset Loading
-    # ============================================================
-
     raw_dataset = load_dataset(
         "text",
         data_files={"data": DB_PATH},
@@ -102,23 +87,45 @@ def main():
         seed=SEED
     )
 
-    # ============================================================
     # 6. Tokenization (Manual truncation + Dynamic padding)
-    # ============================================================
-
     def tokenize_function(examples):
+        """Tokenize a batch of text examples with manual sequence length truncation.
 
+        This function applies the fast tokenizer to a batch of input strings without
+        internal padding or truncation. After tokenization, each sequence is manually
+        truncated to `MAX_SEQ_LENGTH` tokens to enforce a hard limit on input length
+        while preserving the original tokenizer output for inspection if needed.
+
+        Parameters
+        ----------
+        examples : dict
+            A dictionary containing at least a key `"text"` which maps to a list of
+            input strings to be tokenized.
+
+        Returns
+        -------
+        dict
+            A dictionary with the same structure as the tokenizer output, containing
+            at least `"input_ids"` and `"attention_mask"` keys. Each value is a list
+            of token sequences, where every sequence has been truncated to the first
+            `MAX_SEQ_LENGTH` tokens.
+
+        Notes
+        -----
+        The global variable `MAX_SEQ_LENGTH` must be defined in the enclosing scope.
+        The `fast_tokenizer` object is assumed to be a pre-initialized Hugging Face
+        tokenizer (e.g., a `PreTrainedTokenizerFast` instance).
+        """
         encodings = fast_tokenizer(
             examples["text"],
-            padding=False,      # IMPORTANT: no fixed padding
-            truncation=False,   # IMPORTANT: avoid internal truncation call
+            padding=False,      # no fixed padding applied here
+            truncation=False,   # internal truncation is disabled; handled manually
         )
 
-        # Manual truncation
+        # Manual truncation to enforce a strict maximum sequence length
         encodings["input_ids"] = [
             ids[:MAX_SEQ_LENGTH] for ids in encodings["input_ids"]
         ]
-
         encodings["attention_mask"] = [
             mask[:MAX_SEQ_LENGTH] for mask in encodings["attention_mask"]
         ]
@@ -136,20 +143,14 @@ def main():
     train_dataset = tokenized_datasets["train"]
     eval_dataset = tokenized_datasets["test"]
 
-    # ============================================================
     # 7. Data Collator (Dynamic Padding + MLM)
-    # ============================================================
-
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=fast_tokenizer,
         mlm=True,
         mlm_probability=0.15,
     )
 
-    # ============================================================
     # 8. Training Steps Calculation
-    # ============================================================
-
     BATCH_SIZE = 16     #Decreased due to limited VRAM (4GB)
     EPOCHS = 3          #limited by time constraints and GPU
 
@@ -163,10 +164,8 @@ def main():
     print(torch.__version__)
     print(torch.version.cuda)
     print(torch.cuda.is_available())
-    # ============================================================
-    # 9. Training Arguments (Stable & Efficient)
-    # ============================================================
 
+    # 9. Training Arguments (Stable & Efficient)
     training_args = TrainingArguments(
         output_dir= os.path.join(SCRIPT_DIR, "inchi_embedder_checkpoints"),
         num_train_epochs=EPOCHS,
@@ -192,10 +191,7 @@ def main():
         dataloader_pin_memory=True,      
         )
 
-    # ============================================================
     # 10. Trainer
-    # ============================================================
-
     trainer = Trainer(
         model=model,
         args=training_args,
@@ -204,16 +200,10 @@ def main():
         data_collator=data_collator,
     )
 
-    # ============================================================
     # 11. Train
-    # ============================================================
-
     trainer.train()
 
-    # ============================================================
     # 12. Save Final Model
-    # ============================================================
-
     trainer.save_model(MODEL_SAVE_PATH)
     fast_tokenizer.save_pretrained(MODEL_SAVE_PATH)
 

@@ -1,14 +1,35 @@
 import pandas as pd
-import numpy as np
-from pandas import DataFrame
 from api_calls import *
 
+import os
+
+# Determine script's absolute directory
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Base path to the CSV folder (adjust this relative to SCRIPT_DIR)
+DATA_DIR = os.path.join(SCRIPT_DIR, "drugbank_raw")
+
 #drugs with enzyme data
-csvfile_enzyme = pd.read_csv("./DataBase/drug_enzyme_db_all.csv", delimiter= ",", header= 0, encoding="utf-8")
+csvfile_enzyme = pd.read_csv(
+    os.path.join(DATA_DIR, "drug_enzyme_db_all.csv"),
+    delimiter=",",
+    header=0,
+    encoding="utf-8"
+)
 #drugs with smiles/Inchi data
-csvfile_smiles = pd.read_csv("./DataBase/structure_smiles_links_all.csv", delimiter= ",", header= 0, encoding="utf-8")
+csvfile_smiles = pd.read_csv(
+    os.path.join(DATA_DIR, "structure_smiles_links_all.csv"),
+    delimiter=",",
+    header=0,
+    encoding="utf-8"
+)
 #all drugs with external references and drug type
-csvfile_drugs = pd.read_csv("./DataBase/drug_links_all.csv", delimiter= ",", header=0, encoding="utf-8")
+csvfile_drugs = pd.read_csv(
+    os.path.join(DATA_DIR, "drug_links_all.csv"),
+    delimiter=",",
+    header=0,
+    encoding="utf-8"
+)
 
 #Get all IDs of SmallMolecules to ignore proteins and peptides
 small_molecule_ids = csvfile_drugs.loc[
@@ -33,7 +54,7 @@ def name_to_cypcode(CypName: str) -> str | None:
         return code
     return
 
-### Create dfs ###
+### Create dfs 
 drug_CYPs: dict[str, list[str]] = {}
 for _, row in csvfile_enzyme.iterrows():
     drug_id = row["DrugBank ID"]
@@ -73,9 +94,9 @@ missing_structures = df_cyps_smd.loc[df_cyps_smd["InChI"].isnull()]
 # ### Get InChI from SMILES (cached) 
 # new_smiles_df["InChI"] = new_smiles_df["SMILES"].apply(smiles_to_inchi)
 # ### Cache the new data to avoid recalling API
-# new_smiles_df.to_csv("smiles_data_cache.csv", index=False)
+# new_smiles_df.to_csv(os.path.join(SCRIPT_DIR, "smiles_data_cache.csv"), index=False)
 
-new_smiles_df = pd.read_csv("smiles_data_cache.csv")
+new_smiles_df = pd.read_csv(os.path.join(SCRIPT_DIR, "smiles_data_cache.csv"))
 new_smiles_df["CYPs"] = new_smiles_df["CYPs"].apply(eval)
 
 df_DrugBank = pd.concat([df_cyps_smd, new_smiles_df], ignore_index=True)
@@ -104,7 +125,7 @@ df_DrugBank_curated = df_DrugBank_clean.copy()
 df_DrugBank_curated["CYPs"] = df_DrugBank_clean["CYPs"].apply(
     lambda cyps: [cyp for cyp in cyps if cyp not in uncommon_cyps])
 
-df_DrugBank_curated.to_csv("DrugBank_curated_df.csv", index=False) 
+df_DrugBank_curated.to_csv(os.path.join(SCRIPT_DIR, "DrugBank_curated_df.csv"), index=False) 
 cyp_counter_curated = Counter(cyp for cyps in df_DrugBank_curated["CYPs"] for cyp in cyps)
 
 if __name__=="__main__":  
