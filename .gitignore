@@ -6,7 +6,8 @@ __pycache__/
 .env.local
 
 # Data base directory – ignore everything except DataBase/InChI/
-DataBases/**
+DataBases/drugbank_raw
+DataBases/Chinese_paper_testing_sets_unused
 !DataBases/InChI/
 !DataBases/InChI/**
 

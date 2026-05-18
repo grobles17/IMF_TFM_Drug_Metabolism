@@ -15,17 +15,16 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.metrics import matthews_corrcoef, f1_score, hamming_loss
-from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
-from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
 import joblib
 import ast
 
-# ------------------------------  CONFIGURATION  ---------------------------------
+# CONFIGURATION
 RANDOM_SEED = 33
-TEST_FRACTION = 0.2
-CV_FOLDS = 3
-MIN_POS_PER_FOLD = 10          # Minimum positives required in each validation fold
-OUTPUT_DIR = "./xgboost_models"
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LABELS_FILE = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "DataBases", "DrugBank_curated_df.csv"))
+SPLITS_PATH = os.path.join(SCRIPT_DIR, "splits", "benchmark_splits.joblib")
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "models", "xgboost_models")
 
 # Hyperparameter grid
 param_grid = {
@@ -52,9 +51,6 @@ cyp_labels = [
 
 # Thresholds to evaluate during CV (per CYP)
 THRESHOLDS_TO_TRY = [0.1, 0.3, 0.5, 0.7]
-
-# -------------------------------------------------------------------------------
-
 
 def load_data(fp_path, labels_path, cyp_list):
     """
@@ -93,44 +89,6 @@ def load_data(fp_path, labels_path, cyp_list):
     print(f"Molecules with both representation and labels: {len(common_ids)}")
     return X, Y
 
-
-def iterative_stratified_split(X, Y, test_size=0.2, random_state=33):
-    """
-    Multilabel-preserving train/test split.
-    Returns (X_train, X_test, Y_train, Y_test) as DataFrames.
-    """
-    X_arr = X.to_numpy()
-    Y_arr = Y.to_numpy()
-
-    msss = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=test_size, random_state=random_state)
-    train_idx, test_idx = next(msss.split(X_arr, Y_arr))
-
-    X_train = pd.DataFrame(X_arr[train_idx], index=X.index[train_idx], columns=X.columns)
-    X_test = pd.DataFrame(X_arr[test_idx],  index=X.index[test_idx],  columns=X.columns)
-    Y_train = pd.DataFrame(Y_arr[train_idx], index=X.index[train_idx], columns=Y.columns)
-    Y_test = pd.DataFrame(Y_arr[test_idx],  index=X.index[test_idx],  columns=Y.columns)
-
-    return X_train, X_test, Y_train, Y_test
-
-
-def check_cyp_distribution(Y_train, Y_test, cyp_list, min_positives=5):
-    """
-    Warn if any CYP has too few positives in train or test.
-    Returns a list of CYPs that are safe to evaluate (>= min_positives in both).
-    """
-    safe_cyps = []
-    for cyp in cyp_list:
-        pos_train = Y_train[cyp].sum()
-        pos_test = Y_test[cyp].sum()
-        if pos_train < min_positives or pos_test < min_positives:
-            warnings.warn(
-                f"CYP {cyp}: train positives={pos_train}, test positives={pos_test}. "
-                f"MCC may be unstable. Skipping from macro MCC."
-            )
-        else:
-            safe_cyps.append(cyp)
-    return safe_cyps
-
 def train_and_evaluate_cyp_with_thresholds(X_train, y_train, X_val, y_val, xgb_params, thresholds, scale_pos_weight):
     """
     Train a single XGBoost model and evaluate multiple thresholds on validation fold.
@@ -151,7 +109,7 @@ def train_and_evaluate_cyp_with_thresholds(X_train, y_train, X_val, y_val, xgb_p
         mccs.append(mcc)
     return mccs
 
-def cross_validate_cyp_with_thresholds(X, y, fold_indices, xgb_params, thresholds, scale_pos_weight):
+def cross_validate_cyp_with_thresholds(X, y, folds, xgb_params, thresholds, scale_pos_weight):
     """
     Perform CV for one CYP using pre-computed fold indices.
     For each threshold, collect MCC from all folds, then average.
@@ -161,12 +119,14 @@ def cross_validate_cyp_with_thresholds(X, y, fold_indices, xgb_params, threshold
     """
     # For each threshold, accumulate MCCs across folds
     mcc_accum = {th: [] for th in thresholds}
+    for fold_info in folds:
+        train_ids_fold = fold_info["train_ids"]
+        val_ids_fold = fold_info["val_ids"]
 
-    for train_idx, val_idx in fold_indices:
-        X_train_f = X.iloc[train_idx]
-        y_train_f = y.iloc[train_idx]
-        X_val_f = X.iloc[val_idx]
-        y_val_f = y.iloc[val_idx]
+        X_train_f = X.loc[train_ids_fold]
+        X_val_f = X.loc[val_ids_fold]
+        y_train_f = y.loc[train_ids_fold]  
+        y_val_f = y.loc[val_ids_fold]
 
         fold_mccs = train_and_evaluate_cyp_with_thresholds(
             X_train_f, y_train_f, X_val_f, y_val_f, xgb_params, thresholds, scale_pos_weight
@@ -174,15 +134,12 @@ def cross_validate_cyp_with_thresholds(X, y, fold_indices, xgb_params, threshold
         for th, mcc_val in zip(thresholds, fold_mccs):
             mcc_accum[th].append(mcc_val)
 
-    # Average MCC per threshold
     avg_mcc = {th: np.mean(mcc_accum[th]) for th in thresholds}
-    # Select best threshold (max avg MCC; tie → first encountered)
     best_th = max(avg_mcc.items(), key=lambda item: (item[1], -thresholds.index(item[0])))[0]
     best_mcc = avg_mcc[best_th]
     return best_th, best_mcc
 
-
-def grid_search_over_cyps(X_train, Y_train, cyp_list, fold_indices, param_grid, thresholds, scale_pos_weight_dict):
+def grid_search_over_cyps(X_train, Y_train, cyp_list, folds, param_grid, thresholds, scale_pos_weight_dict):
     """
     Exhaustive grid search over hyperparameters.
     For each combination:
@@ -197,10 +154,6 @@ def grid_search_over_cyps(X_train, Y_train, cyp_list, fold_indices, param_grid, 
     values = list(param_grid.values())
     combos = list(product(*values))
     results = []
-
-    # For storing best thresholds later (when we find the best hyperparameters)
-    best_overall_thresholds = None
-    best_overall_macro = -1.0
 
     for combo_idx, combo in enumerate(combos, 1):
         xgb_params = dict(zip(keys, combo))   # no threshold here
@@ -218,7 +171,7 @@ def grid_search_over_cyps(X_train, Y_train, cyp_list, fold_indices, param_grid, 
                 continue
 
             best_th, best_mcc = cross_validate_cyp_with_thresholds(
-                X_train, y_cyp, fold_indices, xgb_params, thresholds, scale_pos_weight_dict[cyp]
+                X_train, y_cyp, folds, xgb_params, thresholds, scale_pos_weight_dict[cyp]
             )
             per_cyp_best_mcc.append(best_mcc)
             per_cyp_best_th.append(best_th)
@@ -233,11 +186,6 @@ def grid_search_over_cyps(X_train, Y_train, cyp_list, fold_indices, param_grid, 
             "cyp_order": cyp_list
         })
         print(f"  -> Macro MCC = {macro_mcc:.4f}")
-
-        # Keep track of best overall (highest macro MCC)
-        if macro_mcc > best_overall_macro:
-            best_overall_macro = macro_mcc
-            best_overall_thresholds = dict(zip(cyp_list, per_cyp_best_th))
 
     # Now find the best hyperparameter set (using macro MCC, tie-break by variance of per-CYP MCCs)
     best_macro = max(r["macro_mcc"] for r in results)
@@ -265,7 +213,7 @@ def grid_search_over_cyps(X_train, Y_train, cyp_list, fold_indices, param_grid, 
     return results_df, best_params, best_thresholds_per_cyp
 
 
-def retrain_all_cyps(X_train, Y_train, cyp_list, best_xgb_params, models_dir, scale_pos_weight_dict):
+def retrain_all_cyps(X_train, Y_train, cyp_list, best_xgb_params, output_dir, scale_pos_weight_dict):
     """
     Train final model for each CYP on full training set using the best global
     XGBoost hyperparameters (no threshold in training). Saves each model as .joblib.
@@ -282,15 +230,18 @@ def retrain_all_cyps(X_train, Y_train, cyp_list, best_xgb_params, models_dir, sc
         model = xgb.XGBClassifier(**full_params)
         model.fit(X_train, y_cyp)
         models[cyp] = model
-        joblib.dump(model, os.path.join(models_dir, f"{cyp}.joblib"))
+        joblib.dump(model, os.path.join(output_dir, f"{cyp}.joblib"))
     return models
-
 
 def evaluate_test_set(models, X_test, Y_test, cyp_list, threshold_dict):
     """
     Evaluate all models on the unseen test set using per-CYP thresholds.
     Returns: per-CYP MCC, macro MCC, micro F1, hamming loss.
+
+    Only CYPs present in models are included in multi-label metrics,
+    so all three aggregate metrics are computed on the same subset.
     """
+    evaluated_cyps = []
     y_true_list = []
     y_pred_list = []
     per_cyp_mcc = {}
@@ -298,57 +249,68 @@ def evaluate_test_set(models, X_test, Y_test, cyp_list, threshold_dict):
     for cyp in cyp_list:
         if cyp not in models:
             per_cyp_mcc[cyp] = 0.0
-            continue
+            continue  # excluded from multi-label metrics too
         model = models[cyp]
         y_true = Y_test[cyp].values
         y_pred_prob = model.predict_proba(X_test)[:, 1]
-        threshold = threshold_dict.get(cyp, 0.5)   # fallback to 0.5 if missing
+        threshold = threshold_dict.get(cyp, 0.5)
         y_pred = (y_pred_prob >= threshold).astype(int)
+
+        evaluated_cyps.append(cyp)
         y_true_list.append(y_true)
         y_pred_list.append(y_pred)
+
         try:
             mcc = matthews_corrcoef(y_true, y_pred)
         except Exception:
             mcc = 0.0
         per_cyp_mcc[cyp] = mcc
 
+    if not evaluated_cyps:
+        return per_cyp_mcc, 0.0, 0.0, 1.0
+
     Y_pred_matrix = np.column_stack(y_pred_list)
-    Y_true_matrix = Y_test[cyp_list].values
+    Y_true_matrix = Y_test[evaluated_cyps].values  # aligned to evaluated_cyps, not cyp_list
+
     micro_f1 = f1_score(Y_true_matrix, Y_pred_matrix, average="micro")
     ham_loss = hamming_loss(Y_true_matrix, Y_pred_matrix)
     macro_mcc = np.mean(list(per_cyp_mcc.values()))
-    return per_cyp_mcc, macro_mcc, micro_f1, ham_loss
 
+    return per_cyp_mcc, macro_mcc, micro_f1, ham_loss
 
 def main(repr_file: str):
     print("=" * 60)
     print("Multi-CYP XGBoost training pipeline (threshold optimised per CYP)")
     print("=" * 60)
 
-    # 1. Load data
-    # --- MODIFY PATHS AS NEEDED ---
-    repr_file = repr_file
-    labels_file = "DrugBank_curated_df.csv"
-    MODELS_DIR = os.path.join(OUTPUT_DIR, "models", repr_file.split("_")[0]) # e.g., ./models/morgan/
+    # 1. Load data 
+    os.makedirs(os.path.join(OUTPUT_DIR, repr_file.split("_")[0]), exist_ok=True)
+    repr_path = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "representations", repr_file))
+    MODELS_DIR = os.path.join(OUTPUT_DIR, repr_file.split("_")[0])
     os.makedirs(MODELS_DIR, exist_ok=True)
-    os.makedirs(f"{OUTPUT_DIR}/{repr_file.split('_')[0]}", exist_ok=True)
-    # ------------------------------
-    X, Y = load_data(repr_file, labels_file, cyp_labels)
+
+    X, Y = load_data(repr_path, LABELS_FILE, cyp_labels)
     print(f"Total molecules: {X.shape[0]}, CYP classes: {Y.shape[1]}")
 
-    # 2. Iterative stratified split (80/20)
-    X_train, X_test, Y_train, Y_test = iterative_stratified_split(
-        X, Y, test_size=TEST_FRACTION, random_state=RANDOM_SEED
-    )
-    print(f"Training set: {X_train.shape[0]} molecules")
-    print(f"Test set:     {X_test.shape[0]} molecules")
+    # 2. Load pre-computed splits
+    print("\nLoading frozen benchmark splits...")
+    split_data = joblib.load(SPLITS_PATH)
 
-    # 3. Check CYP distributions and keep only CYPs with sufficient positives
-    safe_cyps = check_cyp_distribution(Y_train, Y_test, cyp_labels, min_positives=5)
-    print(f"CYPs with sufficient data in both train/test: {safe_cyps}")
-    if len(safe_cyps) == 0:
-        raise RuntimeError("No CYP has enough positives - cannot continue.")
-    used_cyps = safe_cyps
+    train_ids = split_data["train_ids"]
+    test_ids = split_data["test_ids"]
+    folds = split_data["folds"]
+    used_cyps = split_data["used_cyps"]
+
+    print(f"Loaded {len(train_ids)} train molecules")
+    print(f"Loaded {len(test_ids)} test molecules")
+    print(f"Loaded {len(folds)} CV folds")
+
+    # 3. Apply test/train split to X and Y
+    X_train = X.loc[train_ids]
+    X_test = X.loc[test_ids]
+
+    Y_train = Y.loc[train_ids]
+    Y_test = Y.loc[test_ids]
 
     # 4. Precompute scale_pos_weight per CYP (negatives / positives in training set)
     cyp_scale_pos_weight = {}
@@ -358,42 +320,13 @@ def main(repr_file: str):
         if pos > 0:
             scale = neg / pos
         else:
-            scale = 1.0  # fallback (should not happen because used_cyps have ≥5 positives)
+            scale = 1.0  # fallback (should not happen because used_cyps have ≥10 positives)
         cyp_scale_pos_weight[cyp] = scale
         print(f"{cyp}: scale_pos_weight = {scale:.2f}")
 
-    # 5. Create multilabel-preserving 3-fold indices on the training set
-    fold_indices = None
-    seed = RANDOM_SEED
-    while True:
-        mskf = MultilabelStratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=seed)
-        folds = list(mskf.split(X_train, Y_train))
-
-        # Check that every validation fold has at least MIN_POS_PER_FOLD positives for each used CYP
-        ok = True
-        for cyp in used_cyps:
-            for fold_idx, (_, val_idx) in enumerate(folds):
-                pos = Y_train.iloc[val_idx][cyp].sum()
-                if pos < MIN_POS_PER_FOLD:
-                    print(f"  Seed {seed}: fold {fold_idx+1} for {cyp} has only {pos} positives (<{MIN_POS_PER_FOLD}).")
-                    ok = False
-                    break
-            if not ok:
-                break
-
-        if ok:
-            fold_indices = folds
-            print(f"All folds OK with seed={seed} (≥{MIN_POS_PER_FOLD} positives per CYP)")
-            break
-        else:
-            print(f"Retrying with seed={seed+1}...")
-            seed += 1   # increment correctly
-
-    print(f"Created {CV_FOLDS} multilabel-preserving stratified CV folds on training data (final seed={seed}).")
-
     # 6. Grid search over hyperparameters (threshold optimised inside CV)
     results_df, best_params, best_thresholds = grid_search_over_cyps(
-        X_train, Y_train, used_cyps, fold_indices, param_grid, THRESHOLDS_TO_TRY, cyp_scale_pos_weight
+        X_train, Y_train, used_cyps, folds, param_grid, THRESHOLDS_TO_TRY, cyp_scale_pos_weight
     )
 
     # Save CV results and best parameters
@@ -405,7 +338,7 @@ def main(repr_file: str):
         thresholds_json = {k: float(v) for k, v in best_thresholds.items()}
         json.dump(thresholds_json, f, indent=2)
 
-    # 7. Retrain models on full 80% using best XGBoost parameters (no threshold in training)
+    # 7. Retrain models on full 80% using best XGBoost parameters 
     models = retrain_all_cyps(X_train, Y_train, used_cyps, best_params, MODELS_DIR, cyp_scale_pos_weight)
 
     # 8. Final evaluation on test set using per-CYP best thresholds
@@ -413,7 +346,7 @@ def main(repr_file: str):
         models, X_test, Y_test, used_cyps, best_thresholds
     )
 
-    # Save test metrics
+    # 9. Save test metrics
     test_metrics = {
         "macro_mcc": macro_mcc,
         "micro_f1": micro_f1,
@@ -423,7 +356,7 @@ def main(repr_file: str):
     with open(os.path.join(OUTPUT_DIR, repr_file.split("_")[0], "test_metrics.json"), "w") as f:
         json.dump(test_metrics, f, indent=2)
 
-    # Print final summary
+    # 10. Print final summary
     print("\n" + "=" * 60)
     print("FINAL TEST RESULTS (20% unseen data, per-CYP optimal thresholds)")
     print(f"Macro MCC      : {macro_mcc:.4f}")
@@ -438,12 +371,17 @@ def main(repr_file: str):
 
 
 if __name__ == "__main__":
+
     repr_files = [
         "morgan_output_representation.tsv",
-        "MolE_output_representation.tsv",
-        "ChemBERTa_output_representation.tsv",
-        "inchi_output_representation.tsv"
     ]
     for repr_file in repr_files:
         print(f"\n\n=== Processing representation: {repr_file} ===")
         main(repr_file)
+    
+    """repr_files = [
+        "morgan_output_representation.tsv",
+        "MolE_output_representation.tsv",
+        "chemberta_output_representation.tsv",
+        "inchi_output_representation.tsv"
+    ]"""
