@@ -1,0 +1,9 @@
+param_set,params,macro_mcc
+0,"{'C': 0.01, 'solver': 'liblinear', 'penalty': 'l2', 'class_weight': 'balanced', 'random_state': 33, 'max_iter': 10000}",0.45160686957921803
+1,"{'C': 0.01, 'solver': 'lbfgs', 'penalty': 'l2', 'class_weight': 'balanced', 'random_state': 33, 'max_iter': 10000}",0.46399804776120274
+2,"{'C': 0.1, 'solver': 'liblinear', 'penalty': 'l2', 'class_weight': 'balanced', 'random_state': 33, 'max_iter': 10000}",0.46214526559962177
+3,"{'C': 0.1, 'solver': 'lbfgs', 'penalty': 'l2', 'class_weight': 'balanced', 'random_state': 33, 'max_iter': 10000}",0.46590987017061924
+4,"{'C': 1.0, 'solver': 'liblinear', 'penalty': 'l2', 'class_weight': 'balanced', 'random_state': 33, 'max_iter': 10000}",0.4489522618195696
+5,"{'C': 1.0, 'solver': 'lbfgs', 'penalty': 'l2', 'class_weight': 'balanced', 'random_state': 33, 'max_iter': 10000}",0.450012119308135
+6,"{'C': 10.0, 'solver': 'liblinear', 'penalty': 'l2', 'class_weight': 'balanced', 'random_state': 33, 'max_iter': 10000}",0.4250613025185396
+7,"{'C': 10.0, 'solver': 'lbfgs', 'penalty': 'l2', 'class_weight': 'balanced', 'random_state': 33, 'max_iter': 10000}",0.4279652729560696

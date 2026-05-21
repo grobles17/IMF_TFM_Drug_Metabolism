@@ -5,11 +5,14 @@ __pycache__/
 *.pyo
 .env.local
 
-# Data base directory – ignore everything except DataBase/InChI/
+# Data base directory
 DataBases/drugbank_raw
 DataBases/Chinese_paper_testing_sets_unused
 !DataBases/InChI/
 !DataBases/InChI/**
+
+# Deprecated model files
+deprecated_output/
 
 # Memorias proposal document
 Memorias\TFM Drug metabolism predictor propuesta (es).docx

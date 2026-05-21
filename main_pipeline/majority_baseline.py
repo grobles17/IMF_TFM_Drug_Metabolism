@@ -14,7 +14,6 @@ Uses the exact same frozen benchmark splits as all other models.
 
 import os
 import json
-import warnings
 import ast
 import joblib
 
@@ -37,8 +36,8 @@ SPLITS_PATH = os.path.join(
 )
 
 OUTPUT_DIR = os.path.join(
-    os.path.dirname(SCRIPT_DIR),
-    "models",
+    SCRIPT_DIR,
+    "results",
     "majority_baseline"
 )
 
@@ -188,8 +187,8 @@ def main():
     print("Majority-class baseline")
     print("=" * 60)
 
-    # MODIFY PATH IF NEEDED
-    labels_file = "DrugBank_curated_df.csv"
+    labels_file = os.path.normpath(
+        os.path.join(SCRIPT_DIR, "..", "DataBases", "DrugBank_curated_df.csv"))
 
     # 1. Load labels
     Y = load_labels(
@@ -241,12 +240,16 @@ def main():
         used_cyps
     )
 
+    """When you predict the same class for every molecule, 
+    MCC is mathematically guaranteed to be 0.0 (either FN 
+    or FP is always zero, making the denominator zero)"""
+
     # 6. Save results
     results = {
         "macro_mcc": macro_mcc,
         "micro_f1": micro_f1,
         "hamming_loss": ham_loss,
-        "per_cyp_mcc": per_cyp_mcc
+        "per_cyp_mcc": {k: float(v) for k, v in per_cyp_mcc.items()}
     }
 
     with open(
@@ -263,7 +266,9 @@ def main():
     print(f"Macro MCC:   {macro_mcc:.4f}")
     print(f"Micro F1:    {micro_f1:.4f}")
     print(f"HammingLoss: {ham_loss:.4f}")
-
+    print("\nPer-CYP MCC and used threshold:")
+    for cyp in used_cyps:
+        print(f"  {cyp}: MCC={per_cyp_mcc[cyp]:.4f}")
     print("\nDone.")
 
 
