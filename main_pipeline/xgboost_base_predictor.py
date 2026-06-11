@@ -22,7 +22,10 @@ import ast
 RANDOM_SEED = 33
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LABELS_FILE = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "DataBases", "DrugBank_curated_df.csv"))
+REPO_ROOT = os.path.dirname(SCRIPT_DIR)
+LABELS_FILE = os.path.normpath(
+    os.path.join(REPO_ROOT, "DataBases", "DrugBank_curated_df.csv")
+    )
 SPLITS_PATH = os.path.join(SCRIPT_DIR, "splits", "benchmark_splits.joblib")
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "models", "xgboost_models")
 
@@ -363,10 +366,10 @@ def main(repr_file: str):
     )
 
     # Save CV results and best parameters
-    results_df.to_csv(os.path.join(SAVE_DIR, "cv_results.csv"), index=False)
-    with open(os.path.join(SAVE_DIR, "best_params.json"), "w") as f:
+    results_df.to_csv(os.path.join(SAVE_DIR, f"cv_results_{repr_file.split('_')[0]}.csv"), index=False)
+    with open(os.path.join(SAVE_DIR, f"best_params_{repr_file.split('_')[0]}.json"), "w") as f:
         json.dump(best_params, f, indent=2)
-    with open(os.path.join(SAVE_DIR, "best_thresholds_per_cyp.json"), "w") as f:
+    with open(os.path.join(SAVE_DIR, f"best_thresholds_per_cyp_{repr_file.split('_')[0]}.json"), "w") as f:
         # convert numpy floats to Python floats for JSON
         thresholds_json = {k: float(v) for k, v in best_thresholds.items()}
         json.dump(thresholds_json, f, indent=2)
@@ -386,7 +389,7 @@ def main(repr_file: str):
         "hamming_loss": ham_loss,
         "per_cyp_mcc": {k: float(v) for k, v in per_cyp_mcc.items()},
     }
-    with open(os.path.join(SAVE_DIR, "test_metrics.json"), "w") as f:
+    with open(os.path.join(SAVE_DIR, f"test_metrics_{repr_file.split('_')[0]}.json"), "w") as f:
         json.dump(test_metrics, f, indent=2)
 
     # 10. Print final summary
@@ -400,7 +403,7 @@ def main(repr_file: str):
         th = best_thresholds.get(cyp, 0.5)
         print(f"  {cyp}: threshold={th:.1f}, MCC={per_cyp_mcc[cyp]:.4f}")
     print("=" * 60)
-    print(f"All models and results from {repr_file} saved in: {OUTPUT_DIR}")
+    print(f"All models and results from {repr_file} saved in: {SAVE_DIR}")
 
 
 if __name__ == "__main__":

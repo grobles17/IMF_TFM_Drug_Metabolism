@@ -5,7 +5,7 @@ For each CYP and each hyperparameter set, threshold is optimised during CV
 (by maximising average validation MCC over 0.1, 0.3, 0.5, 0.7).
 Final evaluation on untouched 20% test set uses per-CYP optimal thresholds.
 
-Methodology is identical to xgboost_base_model.py to allow fair comparison.
+Methodology is identical to xgboost_base_predictor.py to allow fair comparison.
 """
 
 import os
@@ -16,12 +16,13 @@ from itertools import product
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import matthews_corrcoef, f1_score, hamming_loss
+from sklearn.metrics import matthews_corrcoef
+from sklearn.exceptions import ConvergenceWarning
 import joblib
-import ast
 
 # CONFIGURATION
 RANDOM_SEED = 33
+FAILED_CONVERGENCE_LOGS = []
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -34,7 +35,7 @@ SPLITS_PATH = os.path.join(SCRIPT_DIR, "splits", "benchmark_splits.joblib")
 RESULTS_BASE = os.path.join(SCRIPT_DIR, "results", "logistic_regression")
 MODELS_BASE = os.path.join(SCRIPT_DIR, "models", "logistic_regression")
 
-# All CYP classes (must match xgboost_base_model.py)
+# All CYP classes (must match xgboost_base_predictor.py)
 cyp_labels = [
     "CYP3A4", "CYP2D6", "CYP2C9", "CYP1A2", "CYP3A5",
     "CYP2C19", "CYP2C8", "CYP2B6", "CYP3A7", "CYP2E1",
@@ -48,27 +49,29 @@ THRESHOLDS_TO_TRY = [0.1, 0.3, 0.5, 0.7]
 # Notes on solver choice:
 #   - "liblinear" supports L1 and L2, handles sparse/count matrices well,
 #     and is fast for moderately sized datasets.
-#   - "lbfgs" supports only L2 and multiclass but can be slower on high-dim sparse data.
+#   - "lbfgs" would only support L2 but was failing to converge on some 
+#     CYPs even with high max_iter, so it was dropped.
+#   - "saga" supports both L1 and L2, is robust to convergence issues, 
+#     and can handle larger datasets, but is slower than liblinear for smaller ones. 
 #   class_weight="balanced" replaces scale_pos_weight from XGBoost and handles imbalance.
 param_grid = {
     "C": [0.01, 0.1, 1.0, 10.0],
-    "solver": ["liblinear", "lbfgs"],
+    "solver": ["liblinear", "saga"],
+    "penalty": ["l1","l2"],  
 }
 
 # Fixed parameters applied to every LogisticRegression instance
 LR_FIXED = {
-    "penalty": "l2",
     "class_weight": "balanced",
     "random_state": RANDOM_SEED,
-    "max_iter": 10000, #started at 1000, then 2000 but some models failed to converge
+    "max_iter": 5000, #started at 1000, then 2000 but some models failed to converge
 }
-"""Params that hit max_iter without converging:
-[4/8] Testing params: {'C': 0.1, 'solver': 'lbfgs'}
-[6/8] Testing params: {'C': 1.0, 'solver': 'lbfgs'}
-[8/8] Testing params: {'C': 10.0, 'solver': 'lbfgs'}
+"""lbfgs was failing to converge on some CYPs even with max_iter=10 000, 
+    so it was switched to liblinear and saga, with the added benefit
+    of supporting L1 penalty and thus more sparsity in the final models.
 """
-# DATA LOADING (identical to xgboost_base_model.py)
-from xgboost_base_model import load_data
+# DATA LOADING (identical to xgboost_base_predictor.py)
+from xgboost_base_predictor import load_data
 
 # TRAINING & THRESHOLD EVALUATION
 def train_and_evaluate_cyp_with_thresholds(
@@ -96,7 +99,23 @@ def train_and_evaluate_cyp_with_thresholds(
         MCC for each threshold in the same order as `thresholds`.
     """
     model = LogisticRegression(**lr_params)
-    model.fit(X_train, y_train)
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always")
+
+        model.fit(X_train, y_train)
+
+        for warn in caught_warnings:
+            if issubclass(warn.category, ConvergenceWarning):
+
+                FAILED_CONVERGENCE_LOGS.append({
+                    "solver": lr_params.get("solver"),
+                    "penalty": lr_params.get("penalty"),
+                    "C": lr_params.get("C"),
+                    "warning_message": str(warn.message),
+                    "n_train_samples": len(X_train),
+                    "n_features": X_train.shape[1],
+                })
     proba = model.predict_proba(X_val)[:, 1]
 
     mccs = []
@@ -304,13 +323,10 @@ def retrain_all_cyps(
     return models
 
 
-# TEST SET EVALUATION (identical to xgboost_base_model.py)
-from xgboost_base_model import evaluate_test_set
+from xgboost_base_predictor import evaluate_test_set
 
 
-# -----------------------------------------------------------
 # MAIN PIPELINE
-# -----------------------------------------------------------
 def main(repr_file: str) -> None:
     """
     Run the full logistic regression pipeline for one molecular representation.
@@ -370,13 +386,13 @@ def main(repr_file: str) -> None:
     )
 
     # Save CV results and best parameters
-    results_df.to_csv(os.path.join(results_dir, f"cv_results_{repr_name}.csv"), index=False)
+    results_df.to_csv(os.path.join(results_dir, f"cv_results_{repr_name.split('_')[0]}.csv"), index=False)
     # Serialise only the grid-searchable params (drop fixed params from JSON)
     grid_keys = list(param_grid.keys())
     best_grid_params = {k: best_params[k] for k in grid_keys}
-    with open(os.path.join(results_dir, f"best_params_{repr_name}.json"), "w") as f:
+    with open(os.path.join(results_dir, f"best_params_{repr_name.split('_')[0]}.json"), "w") as f:
         json.dump(best_grid_params, f, indent=2)
-    with open(os.path.join(results_dir, f"best_thresholds_per_cyp_{repr_name}.json"), "w") as f:
+    with open(os.path.join(results_dir, f"best_thresholds_per_cyp_{repr_name.split('_')[0]}.json"), "w") as f:
         thresholds_json = {k: float(v) for k, v in best_thresholds.items()}
         json.dump(thresholds_json, f, indent=2)
 
@@ -395,8 +411,21 @@ def main(repr_file: str) -> None:
         "hamming_loss": ham_loss,
         "per_cyp_mcc": {k: float(v) for k, v in per_cyp_mcc.items()},
     }
-    with open(os.path.join(results_dir, f"test_metrics_{repr_name}.json"), "w") as f:
+    with open(os.path.join(results_dir, f"test_metrics_{repr_name.split('_')[0]}.json"), "w") as f:
         json.dump(test_metrics, f, indent=2)
+    
+    # Save convergence diagnostics
+    if FAILED_CONVERGENCE_LOGS:
+        convergence_df = pd.DataFrame(FAILED_CONVERGENCE_LOGS)
+
+        convergence_df.to_csv(
+            os.path.join(results_dir, "convergence_warnings.csv"),
+            index=False
+        )
+
+        print(
+            f"Saved {len(convergence_df)} convergence warnings."
+        )
 
     # 9. Print final summary
     print("\n" + "=" * 60)

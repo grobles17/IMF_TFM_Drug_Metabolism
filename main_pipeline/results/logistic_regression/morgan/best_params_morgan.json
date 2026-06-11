@@ -1,4 +1,5 @@
 {
   "C": 0.1,
-  "solver": "lbfgs"
+  "solver": "saga",
+  "penalty": "l2"
 }

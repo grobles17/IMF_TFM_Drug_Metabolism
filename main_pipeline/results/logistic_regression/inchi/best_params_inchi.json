@@ -1,4 +1,5 @@
 {
   "C": 0.01,
-  "solver": "lbfgs"
+  "solver": "liblinear",
+  "penalty": "l2"
 }

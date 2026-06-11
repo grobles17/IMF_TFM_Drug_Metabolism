@@ -1,0 +1,9 @@
+{
+  "n_estimators": 200,
+  "max_depth": 20,
+  "min_samples_split": 5,
+  "max_features": "sqrt",
+  "class_weight": "balanced",
+  "random_state": 33,
+  "n_jobs": 1
+}
