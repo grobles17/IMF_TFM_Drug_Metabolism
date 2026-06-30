@@ -115,6 +115,7 @@ def train_and_evaluate_cyp_with_thresholds(
                     "warning_message": str(warn.message),
                     "n_train_samples": len(X_train),
                     "n_features": X_train.shape[1],
+                    "iterations": lr_params.get("max_iter"),
                 })
     proba = model.predict_proba(X_val)[:, 1]
 
