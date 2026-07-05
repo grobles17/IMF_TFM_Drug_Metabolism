@@ -81,6 +81,7 @@ def train_and_evaluate_cyp_with_thresholds(
     y_val: pd.Series,
     lr_params: dict,
     thresholds: list,
+    representation_name: str = "unknown"
 ) -> list:
     """
     Train a single LogisticRegression and evaluate multiple thresholds on the
@@ -92,6 +93,7 @@ def train_and_evaluate_cyp_with_thresholds(
     X_val, y_val     : validation features and binary labels for one CYP.
     lr_params        : keyword arguments passed to LogisticRegression.
     thresholds       : list of float probability cut-offs to evaluate.
+    representation_name : str, name of the feature representation used.
 
     Returns
     -------
@@ -109,10 +111,11 @@ def train_and_evaluate_cyp_with_thresholds(
             if issubclass(warn.category, ConvergenceWarning):
 
                 FAILED_CONVERGENCE_LOGS.append({
+                    "representation": representation_name,
+                    "cyp": y_train.name,
                     "solver": lr_params.get("solver"),
                     "penalty": lr_params.get("penalty"),
                     "C": lr_params.get("C"),
-                    "warning_message": str(warn.message),
                     "n_train_samples": len(X_train),
                     "n_features": X_train.shape[1],
                     "iterations": lr_params.get("max_iter"),
@@ -136,6 +139,7 @@ def cross_validate_cyp_with_thresholds(
     folds: list,
     lr_params: dict,
     thresholds: list,
+    representation_name: str = "unknown"
 ) -> tuple:
     """
     Perform CV for one CYP using pre-computed fold indices.
@@ -149,6 +153,7 @@ def cross_validate_cyp_with_thresholds(
     folds    : list of dicts with keys 'train_ids' and 'val_ids'.
     lr_params: keyword arguments passed to LogisticRegression.
     thresholds: list of float probability cut-offs.
+    representation_name : str, name of the feature representation used.
 
     Returns
     -------
@@ -168,7 +173,7 @@ def cross_validate_cyp_with_thresholds(
         y_val_f = y.loc[val_ids_f]
 
         fold_mccs = train_and_evaluate_cyp_with_thresholds(
-            X_train_f, y_train_f, X_val_f, y_val_f, lr_params, thresholds
+            X_train_f, y_train_f, X_val_f, y_val_f, lr_params, thresholds, representation_name
         )
         for th, mcc_val in zip(thresholds, fold_mccs):
             mcc_accum[th].append(mcc_val)
@@ -190,6 +195,7 @@ def grid_search_over_cyps(
     folds: list,
     param_grid: dict,
     thresholds: list,
+    representation_name: str = "unknown"
 ) -> tuple:
     """
     Exhaustive grid search over hyperparameters across all CYP isoforms.
@@ -209,6 +215,7 @@ def grid_search_over_cyps(
     folds    : pre-computed CV fold definitions.
     param_grid : dict mapping hyperparameter names to lists of candidate values.
     thresholds : list of float probability cut-offs.
+    representation_name : str, name of the feature representation used.
 
     Returns
     -------
@@ -238,7 +245,7 @@ def grid_search_over_cyps(
                 continue
 
             best_th, best_mcc = cross_validate_cyp_with_thresholds(
-                X_train, y_cyp, folds, lr_params, thresholds
+                X_train, y_cyp, folds, lr_params, thresholds, representation_name
             )
             per_cyp_best_mcc.append(best_mcc)
             per_cyp_best_th.append(best_th)
@@ -350,6 +357,8 @@ def main(repr_file: str) -> None:
     print("Multi-CYP Logistic Regression pipeline (threshold optimised per CYP)")
     print("=" * 60)
 
+    FAILED_CONVERGENCE_LOGS.clear()
+    
     # 1. Resolve paths and create output directories
     repr_name = repr_file.split("_")[0]   # e.g., "morgan", "MolE", "chemberta", "inchi"
     repr_path = os.path.normpath(
@@ -383,7 +392,7 @@ def main(repr_file: str) -> None:
 
     # 5. Grid search over hyperparameters (threshold optimised inside CV)
     results_df, best_params, best_thresholds = grid_search_over_cyps(
-        X_train, Y_train, used_cyps, folds, param_grid, THRESHOLDS_TO_TRY
+        X_train, Y_train, used_cyps, folds, param_grid, THRESHOLDS_TO_TRY, repr_name
     )
 
     # Save CV results and best parameters
@@ -445,9 +454,9 @@ def main(repr_file: str) -> None:
 if __name__ == "__main__":
     repr_files = [
         "morgan_output_representation.tsv",
-        "MolE_output_representation.tsv",
-        "chemberta_output_representation.tsv",
-        "inchi_output_representation.tsv",
+#        "MolE_output_representation.tsv",
+ #       "chemberta_output_representation.tsv",
+  #      "inchi_output_representation.tsv",
     ]
     for repr_file in repr_files:
         print(f"\n\n=== Processing representation: {repr_file} ===")

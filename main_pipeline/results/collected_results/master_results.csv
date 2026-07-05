@@ -1,0 +1,77 @@
+model,representation,macro_mcc,micro_f1,hamming_loss,best_params
+logistic_regression,MolE,0.19362875300737653,0.39572192513368987,0.4050179211469534,"{
+  ""C"": 0.01,
+  ""solver"": ""saga"",
+  ""penalty"": ""l1""
+}"
+logistic_regression,chemberta,0.10694648283073101,0.409209060527293,0.43865453542872895,"{
+  ""C"": 0.1,
+  ""solver"": ""liblinear"",
+  ""penalty"": ""l2""
+}"
+logistic_regression,inchi,0.12241635210771479,0.45337753833402406,0.3636614281775572,"{
+  ""C"": 0.01,
+  ""solver"": ""liblinear"",
+  ""penalty"": ""l2""
+}"
+logistic_regression,morgan,0.21820802876606057,0.4947267497603068,0.2905982905982906,"{
+  ""C"": 0.1,
+  ""solver"": ""saga"",
+  ""penalty"": ""l2""
+}"
+random_forest,MolE,0.21378220940150222,0.48739495798319327,0.28591122139509234,"{
+  ""n_estimators"": 300,
+  ""max_depth"": 20,
+  ""min_samples_split"": 5,
+  ""max_features"": ""log2"",
+  ""class_weight"": ""balanced"",
+  ""random_state"": 33,
+  ""n_jobs"": 1
+}"
+random_forest,chemberta,0.1291802723517899,0.4225352112676056,0.44086021505376344,"{
+  ""n_estimators"": 300,
+  ""max_depth"": 12,
+  ""min_samples_split"": 5,
+  ""max_features"": ""log2"",
+  ""class_weight"": ""balanced"",
+  ""random_state"": 33,
+  ""n_jobs"": 1
+}"
+random_forest,inchi,0.12046538904501453,0.4263565891472868,0.4080507306313758,"{
+  ""n_estimators"": 300,
+  ""max_depth"": 12,
+  ""min_samples_split"": 3,
+  ""max_features"": ""log2"",
+  ""class_weight"": ""balanced"",
+  ""random_state"": 33,
+  ""n_jobs"": 1
+}"
+random_forest,morgan,0.2240978692149125,0.5036818851251841,0.2787427626137304,"{
+  ""n_estimators"": 200,
+  ""max_depth"": 20,
+  ""min_samples_split"": 5,
+  ""max_features"": ""sqrt"",
+  ""class_weight"": ""balanced"",
+  ""random_state"": 33,
+  ""n_jobs"": 1
+}"
+xgboost_results,MolE,0.2396122507716065,0.532777115613826,0.21615660325337746,"{
+  ""learning_rate"": 0.05,
+  ""max_depth"": 6,
+  ""n_estimators"": 300
+}"
+xgboost_results,chemberta,0.11617778593484746,0.43685220729366603,0.4044665012406948,"{
+  ""learning_rate"": 0.05,
+  ""max_depth"": 6,
+  ""n_estimators"": 100
+}"
+xgboost_results,inchi,0.15320686886193838,0.46231617647058826,0.3225806451612903,"{
+  ""learning_rate"": 0.05,
+  ""max_depth"": 6,
+  ""n_estimators"": 100
+}"
+xgboost_results,morgan,0.2041279616840952,0.4740484429065744,0.3352633030052385,"{
+  ""learning_rate"": 0.05,
+  ""max_depth"": 6,
+  ""n_estimators"": 100
+}"

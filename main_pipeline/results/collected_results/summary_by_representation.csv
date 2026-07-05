@@ -1,0 +1,5 @@
+representation,mean_macro_mcc,std_macro_mcc,mean_micro_f1,std_micro_f1,mean_hamming_loss,std_hamming_loss
+MolE,0.2157,0.0231,0.472,0.0698,0.3024,0.0955
+morgan,0.2155,0.0103,0.4908,0.0152,0.3015,0.0298
+inchi,0.132,0.0184,0.4474,0.0187,0.3648,0.0427
+chemberta,0.1174,0.0112,0.4229,0.0138,0.428,0.0204
