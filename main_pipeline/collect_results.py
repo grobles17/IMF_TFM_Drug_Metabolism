@@ -21,11 +21,16 @@ RESULTS_ROOT = Path("./main_pipeline/results")
 
 # Models to process (majority_baseline is handled separately)
 MODELS = ["logistic_regression", "random_forest", "xgboost"]
-REPRESENTATIONS = ["MolE", "chemberta", "inchi", "morgan"]
+# Desired order for output tables (same as iteration order)
+MODEL_ORDER = ["logistic_regression", "random_forest", "xgboost"]
 
-# Suffix used in filenames (matches the representation name)
+# Desired representation order for output tables
+REPR_ORDER = ["morgan", "MolE", "chemberta", "inchi"]
+REPRESENTATIONS = REPR_ORDER  # iteration order matches desired output order
+
+# Suffix used in filenames (maps representation name to file suffix)
 REPR_SUFFIX = {
-    "MolE": "mole",        # adjust if actual files use "MolE"
+    "MolE": "mole",
     "chemberta": "chemberta",
     "inchi": "inchi",
     "morgan": "morgan"
@@ -380,6 +385,13 @@ def create_pivot_tables(thresholds_df: pd.DataFrame, per_cyp_df: pd.DataFrame) -
     # Reindex rows using fixed CYP_ORDER
     th_pivot = th_pivot.reindex(CYP_ORDER)
 
+    # Reorder columns to follow MODEL_ORDER × REPR_ORDER
+    # Build the desired column MultiIndex
+    desired_columns = pd.MultiIndex.from_product([MODEL_ORDER, REPR_ORDER],
+                                                 names=['model', 'representation'])
+    # Reindex columns (this will drop any missing combinations and reorder)
+    th_pivot = th_pivot.reindex(columns=desired_columns)
+
     # Per‑CYP MCC pivot - start without the mean column
     mcc_pivot = per_cyp_df.pivot_table(
         index="cyp",
@@ -388,6 +400,9 @@ def create_pivot_tables(thresholds_df: pd.DataFrame, per_cyp_df: pd.DataFrame) -
     )
     # Reindex rows using fixed CYP_ORDER
     mcc_pivot = mcc_pivot.reindex(CYP_ORDER)
+
+    # Reorder columns
+    mcc_pivot = mcc_pivot.reindex(columns=desired_columns)
 
     # Add a column with the mean MCC for each CYP (across all model‑representation pairs)
     mcc_pivot["mean"] = mcc_pivot.mean(axis=1).round(4)
@@ -426,6 +441,16 @@ def export_tables(
     """
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+    # --- Reorder rows of master, baseline, and cv tables ---
+    # Convert model and representation to categorical with desired order
+    for df in [master_df, baseline_comp, cv_df]:
+        if not df.empty:
+            df['model'] = pd.Categorical(df['model'], categories=MODEL_ORDER, ordered=True)
+            df['representation'] = pd.Categorical(df['representation'], categories=REPR_ORDER, ordered=True)
+            df.sort_values(['model', 'representation'], inplace=True)
+            df.reset_index(drop=True, inplace=True)
+
+    # --- Save ---
     master_df.to_csv(OUTPUT_DIR / "master_results.csv", index=False)
     summary_model.to_csv(OUTPUT_DIR / "summary_by_model.csv", index=False)
     summary_repr.to_csv(OUTPUT_DIR / "summary_by_representation.csv", index=False)
@@ -473,7 +498,7 @@ def main():
     # 6. Baseline comparison
     baseline_comp = create_baseline_comparison(master_df, baseline_metrics)
 
-    # 7. Pivot tables (with ordered CYPs and mean row/column)
+    # 7. Pivot tables (with ordered CYPs, models, and representations)
     th_pivot, mcc_pivot = create_pivot_tables(thresholds_df, per_cyp_df)
 
     # 8. Export
