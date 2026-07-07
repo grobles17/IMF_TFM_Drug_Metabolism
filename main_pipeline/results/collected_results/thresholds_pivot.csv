@@ -1,4 +1,4 @@
-model,logistic_regression,logistic_regression,logistic_regression,logistic_regression,random_forest,random_forest,random_forest,random_forest,xgboost_results,xgboost_results,xgboost_results,xgboost_results
+model,logistic_regression,logistic_regression,logistic_regression,logistic_regression,random_forest,random_forest,random_forest,random_forest,xgboost,xgboost,xgboost,xgboost
 representation,MolE,chemberta,inchi,morgan,MolE,chemberta,inchi,morgan,MolE,chemberta,inchi,morgan
 cyp,,,,,,,,,,,,
 CYP3A4,0.7,0.5,0.3,0.5,0.7,0.7,0.7,0.5,0.7,0.7,0.7,0.5

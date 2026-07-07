@@ -1,4 +1,4 @@
 model,mean_macro_mcc,std_macro_mcc,mean_micro_f1,std_micro_f1,mean_hamming_loss,std_hamming_loss
-xgboost_results,0.1783,0.0545,0.4765,0.0406,0.3196,0.0778
+xgboost,0.1783,0.0545,0.4765,0.0406,0.3196,0.0778
 random_forest,0.1719,0.0546,0.46,0.0416,0.3534,0.0832
 logistic_regression,0.1603,0.054,0.4383,0.045,0.3745,0.0638

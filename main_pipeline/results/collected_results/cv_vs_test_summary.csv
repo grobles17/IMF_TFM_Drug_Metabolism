@@ -1,0 +1,13 @@
+model,representation,mean_cv_mcc,std_cv_mcc,test_macro_mcc,difference
+logistic_regression,morgan,0.4437,0.0168,0.2182,-0.2255
+logistic_regression,MolE,0.4114,0.0365,0.1936,-0.2178
+logistic_regression,chemberta,0.3713,0.1202,0.1069,-0.2644
+logistic_regression,inchi,0.4132,0.0361,0.1224,-0.2907
+random_forest,morgan,0.4704,0.0081,0.2241,-0.2463
+random_forest,MolE,0.4582,0.0035,0.2138,-0.2444
+random_forest,chemberta,0.4358,0.0055,0.1292,-0.3066
+random_forest,inchi,0.4467,0.0026,0.1205,-0.3262
+xgboost,morgan,0.4589,0.0085,0.2041,-0.2548
+xgboost,MolE,0.4533,0.0045,0.2396,-0.2136
+xgboost,chemberta,0.3837,0.0142,0.1162,-0.2675
+xgboost,inchi,0.4147,0.0067,0.1532,-0.2615

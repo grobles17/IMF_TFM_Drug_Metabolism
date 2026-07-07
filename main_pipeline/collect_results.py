@@ -20,7 +20,7 @@ from typing import Dict, Optional, List, Tuple
 RESULTS_ROOT = Path("./main_pipeline/results")
 
 # Models to process (majority_baseline is handled separately)
-MODELS = ["logistic_regression", "random_forest", "xgboost_results"]
+MODELS = ["logistic_regression", "random_forest", "xgboost"]
 REPRESENTATIONS = ["MolE", "chemberta", "inchi", "morgan"]
 
 # Suffix used in filenames (matches the representation name)

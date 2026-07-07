@@ -321,7 +321,7 @@ def main(repr_file: str):
     # 1. Load data 
     repr_path = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "representations", repr_file))
     MODELS_DIR = os.path.join(OUTPUT_DIR, repr_file.split("_")[0])
-    SAVE_DIR = os.path.join(SCRIPT_DIR, "results", "xgboost_results", repr_file.split("_")[0])
+    SAVE_DIR = os.path.join(SCRIPT_DIR, "results", "xgboost", repr_file.split("_")[0])
     os.makedirs(MODELS_DIR, exist_ok=True)
     os.makedirs(SAVE_DIR, exist_ok=True)
 
